@@ -1,0 +1,161 @@
+.cardContainer {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cardTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label-tertiary);
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(48, 209, 88, 0.15);
+  border: 1px solid rgba(48, 209, 88, 0.35);
+  color: var(--accent-green);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.mainHero {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.flameIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 16px;
+  background: radial-gradient(circle, rgba(255, 159, 10, 0.25) 0%, rgba(255, 69, 58, 0.1) 100%);
+  border: 1px solid rgba(255, 159, 10, 0.35);
+  box-shadow: 0 0 20px -2px rgba(255, 159, 10, 0.4);
+  color: var(--accent-orange);
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 16px -2px rgba(255, 159, 10, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 24px 2px rgba(255, 159, 10, 0.55);
+  }
+}
+
+.streakNumber {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--label-primary);
+  line-height: 1;
+}
+
+.streakUnit {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--accent-orange);
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.metaValue {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.freezeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  font-size: 0.75rem;
+}
+
+.freezeLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--label-secondary);
+  font-weight: 500;
+}
+
+.freezeShields {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.shieldActive {
+  color: var(--accent-blue);
+}
+
+.shieldUsed {
+  color: var(--label-tertiary);
+  opacity: 0.4;
+}
+
+.atRiskWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  background: rgba(255, 159, 10, 0.12);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  border-radius: 10px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--accent-orange);
+}
+
+.metaLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--label-tertiary);
+}
+
+.metaValue {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--label-primary);
+}

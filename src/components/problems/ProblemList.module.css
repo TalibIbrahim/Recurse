@@ -1,0 +1,398 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.filtersBar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: var(--glass-bg-default);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+}
+
+/* Curated List Selector Section */
+.curatedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.curatedHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.curatedSelector {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: var(--surface-secondary);
+  padding: 0.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.curatedTabBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--label-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.curatedTabBtn:hover {
+  color: var(--label-primary);
+}
+
+.curatedTabBtnActive {
+  background: var(--surface-elevated);
+  color: var(--label-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.curatedProgressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--glass-bg-subtle);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.progressInfoGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.listTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.listTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.listDesc {
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+}
+
+.progressStatsGroup {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.progressPercentageWrap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+}
+
+.progressNumbers {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--label-primary);
+  font-feature-settings: "tnum";
+}
+
+.progressRatio {
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+  font-feature-settings: "tnum";
+}
+
+.progressBarTrack {
+  width: 140px;
+  height: 6px;
+  background: var(--surface-secondary);
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+
+.progressBarFill {
+  height: 100%;
+  background: var(--accent-blue);
+  border-radius: 9999px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.difficultyBreakdown {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.diffStat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-feature-settings: "tnum";
+}
+
+.diffDotEasy {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+}
+
+.diffDotMedium {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+}
+
+.diffDotHard {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-red);
+}
+
+/* Company Tags Carousel / Row */
+.companySection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.25rem 0;
+  scrollbar-width: none;
+}
+
+.companySection::-webkit-scrollbar {
+  display: none;
+}
+
+.companyLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label-tertiary);
+  white-space: nowrap;
+  margin-right: 0.25rem;
+}
+
+.companyPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--label-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.companyPill:hover {
+  color: var(--label-primary);
+  background: var(--surface-elevated);
+}
+
+.companyPillActive {
+  background: var(--surface-elevated);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(175, 82, 222, 0.2);
+}
+
+/* Search Bar */
+.searchRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.875rem;
+  color: var(--label-tertiary);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.625rem 2.25rem 0.625rem 2.5rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--label-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+}
+
+.clearSearchBtn {
+  position: absolute;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--label-tertiary);
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.clearSearchBtn:hover {
+  color: var(--label-primary);
+}
+
+/* Filter Rows */
+.filterRows {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label-tertiary);
+  margin-right: 0.25rem;
+}
+
+.filterPill {
+  padding: 0.3125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--label-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filterPill:hover {
+  color: var(--label-primary);
+  background: var(--surface-elevated);
+}
+
+.filterPillActive {
+  background: var(--surface-elevated);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(10, 132, 255, 0.25);
+}
+
+.summaryCount {
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+  font-weight: 500;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: var(--glass-bg-subtle);
+  border: 1px dashed var(--glass-border);
+  border-radius: 16px;
+  gap: 0.75rem;
+}
+
+.emptyIcon {
+  color: var(--label-tertiary);
+  margin-bottom: 0.5rem;
+}
+
+.emptyTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.emptyDesc {
+  font-size: 0.875rem;
+  color: var(--label-secondary);
+  max-width: 22rem;
+}
+
+.resetFiltersBtn {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--accent-blue);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.resetFiltersBtn:hover {
+  background: var(--accent-blue);
+  color: #ffffff;
+}

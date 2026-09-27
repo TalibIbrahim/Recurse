@@ -1,0 +1,297 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.headerCard {
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.titleArea {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--label-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.subheading {
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+}
+
+.timeframeSelector {
+  display: flex;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  padding: 0.25rem;
+  border-radius: 12px;
+}
+
+.timeframeBtn {
+  position: relative;
+  padding: 0.375rem 0.875rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--label-secondary);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.timeframeBtnActive {
+  color: var(--label-primary);
+  font-weight: 600;
+}
+
+.timeframeActiveBg {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-elevated);
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: -1;
+}
+
+.podiumSection {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem 0 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .podiumSection {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.podiumCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.25rem 1rem;
+  flex: 1;
+  max-width: 220px;
+  position: relative;
+  text-align: center;
+}
+
+.firstPlaceCard {
+  transform: translateY(-0.75rem);
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 24px -4px rgba(255, 215, 0, 0.25);
+}
+
+.medalBadge {
+  position: absolute;
+  top: -0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.goldMedal {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #000000;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+}
+
+.silverMedal {
+  background: linear-gradient(135deg, #E0E0E0, #9E9E9E);
+  color: #000000;
+}
+
+.bronzeMedal {
+  background: linear-gradient(135deg, #CD7F32, #8B4513);
+  color: #FFFFFF;
+}
+
+.podiumAvatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 9999px;
+  object-fit: cover;
+  border: 2px solid var(--glass-border);
+  margin-top: 0.5rem;
+  margin-bottom: 0.625rem;
+}
+
+.podiumName {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--label-primary);
+  line-height: 1.2;
+}
+
+.podiumHandle {
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.podiumPoints {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-blue);
+  line-height: 1;
+}
+
+.podiumPointsLabel {
+  font-size: 0.6875rem;
+  color: var(--label-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tableCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.leaderboardTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tableHeader {
+  background: var(--surface-secondary);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.th {
+  padding: 0.75rem 1rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label-tertiary);
+}
+
+.tr {
+  border-bottom: 1px solid var(--glass-border);
+  transition: background 0.12s ease;
+}
+
+.tr:hover {
+  background: var(--surface-secondary);
+}
+
+.currentUserRow {
+  background: rgba(10, 132, 255, 0.08);
+}
+
+.currentUserRow:hover {
+  background: rgba(10, 132, 255, 0.14);
+}
+
+.td {
+  padding: 0.875rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--label-primary);
+  vertical-align: middle;
+}
+
+.rankCol {
+  font-weight: 700;
+  width: 3rem;
+  text-align: center;
+  color: var(--label-secondary);
+}
+
+.userCol {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tableAvatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  object-fit: cover;
+}
+
+.userNameBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.tableName {
+  font-weight: 600;
+  color: var(--label-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.youBadge {
+  font-size: 0.625rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  background: var(--accent-blue);
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.tableHandle {
+  font-size: 0.6875rem;
+  color: var(--label-secondary);
+}
+
+.breakdownPills {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.easyTag {
+  color: var(--accent-green);
+}
+
+.medTag {
+  color: var(--accent-orange);
+}
+
+.hardTag {
+  color: var(--accent-red);
+}
+
+.pointsCell {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--accent-blue);
+}

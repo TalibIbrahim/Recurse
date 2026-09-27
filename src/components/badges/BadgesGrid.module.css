@@ -1,0 +1,249 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.headerCard {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.titleCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.badgeHeaderLine {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-orange);
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--label-primary);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+}
+
+.progressCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+}
+
+@media (max-width: 540px) {
+  .progressCol {
+    align-items: flex-start;
+  }
+}
+
+.progressLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--label-primary);
+  font-feature-settings: "tnum";
+}
+
+.progressBarTrack {
+  width: 160px;
+  height: 6px;
+  background: var(--surface-secondary);
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+
+.progressBarFill {
+  height: 100%;
+  background: var(--accent-orange);
+  border-radius: 9999px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Category Filters */
+.categoryBar {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  overflow-x: auto;
+}
+
+.categoryPill {
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--label-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.categoryPill:hover {
+  color: var(--label-primary);
+  background: var(--surface-elevated);
+}
+
+.categoryPillActive {
+  background: var(--surface-elevated);
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(255, 159, 10, 0.2);
+}
+
+/* Badges Grid */
+.badgesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.125rem;
+}
+
+.badgeCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem;
+  background: var(--glass-bg-default);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  gap: 0.875rem;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+  overflow: hidden;
+}
+
+.badgeCardUnlocked {
+  border-color: rgba(255, 159, 10, 0.35);
+  box-shadow: 0 4px 20px rgba(255, 159, 10, 0.08);
+}
+
+.badgeCardUnlocked:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-orange);
+}
+
+.badgeCardLocked {
+  background: var(--glass-bg-subtle);
+  opacity: 0.72;
+}
+
+.badgeCardLocked:hover {
+  opacity: 0.9;
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.iconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 14px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--label-tertiary);
+}
+
+.iconUnlocked {
+  background: rgba(255, 159, 10, 0.15);
+  color: var(--accent-orange);
+  border-color: rgba(255, 159, 10, 0.35);
+}
+
+.badgeStatusTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tagUnlocked {
+  background: rgba(48, 209, 88, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(48, 209, 88, 0.3);
+}
+
+.tagLocked {
+  background: var(--surface-secondary);
+  color: var(--label-tertiary);
+  border: 1px solid var(--glass-border);
+}
+
+.badgeBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.badgeName {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--label-primary);
+  letter-spacing: -0.01em;
+}
+
+.badgeDescription {
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+  line-height: 1.4;
+}
+
+.requirementFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.6875rem;
+}
+
+.unlockedAtText {
+  color: var(--label-secondary);
+  font-weight: 500;
+}
+
+.progressText {
+  color: var(--label-tertiary);
+  font-weight: 600;
+  font-feature-settings: "tnum";
+}

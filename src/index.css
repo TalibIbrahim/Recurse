@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Apple HIG Light Mode Tokens */
+  --canvas-bg: #FFFFFF;
+  --surface-secondary: #F2F2F7;
+  --surface-elevated: #FFFFFF;
+  
+  /* Glass Material Fills */
+  --glass-bg-default: rgba(255, 255, 255, 0.70);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.85);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.45);
+  --glass-border: rgba(60, 60, 67, 0.12);
+  --glass-sheen: rgba(255, 255, 255, 0.80);
+  
+  /* Labels */
+  --label-primary: #000000;
+  --label-secondary: rgba(60, 60, 67, 0.60);
+  --label-tertiary: rgba(60, 60, 67, 0.30);
+  --label-quaternary: rgba(60, 60, 67, 0.18);
+  
+  /* Accents */
+  --accent-blue: #007AFF;
+  --accent-green: #34C759;
+  --accent-orange: #FF9500;
+  --accent-red: #FF3B30;
+  --accent-purple: #AF52DE;
+}
+
+/* Dark Mode Tokens (Default for CodeGrind per product spec) */
+.dark, :root:not(.light) {
+  --canvas-bg: #000000;
+  --surface-secondary: #1C1C1E;
+  --surface-elevated: #2C2C2E;
+  
+  /* Glass Material Fills */
+  --glass-bg-default: rgba(28, 28, 30, 0.72);
+  --glass-bg-elevated: rgba(44, 44, 46, 0.82);
+  --glass-bg-subtle: rgba(25, 25, 28, 0.50);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-sheen: rgba(255, 255, 255, 0.18);
+  
+  /* Labels */
+  --label-primary: #FFFFFF;
+  --label-secondary: rgba(235, 235, 245, 0.60);
+  --label-tertiary: rgba(235, 235, 245, 0.30);
+  --label-quaternary: rgba(235, 235, 245, 0.16);
+  
+  /* Accents */
+  --accent-blue: #0A84FF;
+  --accent-green: #30D158;
+  --accent-orange: #FF9F0A;
+  --accent-red: #FF453A;
+  --accent-purple: #BF5AF2;
+}
+
+body {
+  margin: 0;
+  background-color: var(--canvas-bg);
+  color: var(--label-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* Custom Scrollbar adhering to macOS/iOS sleekness */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--label-tertiary);
+}

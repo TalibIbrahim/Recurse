@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Recurse - LeetCode Solve Sync",
+  "version": "1.0.0",
+  "description": "Automatically sync accepted LeetCode solves with Recurse peer accountability and streak tracking.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://leetcode.com/problems/*",
+    "https://recurse.pages.dev/*",
+    "http://localhost:*/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Recurse Configuration"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://leetcode.com/problems/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

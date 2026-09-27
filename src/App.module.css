@@ -1,0 +1,179 @@
+.appRoot {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--canvas-bg);
+  color: var(--label-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Background Ambient Lighting / Subtle Apple Orbs */
+.ambientOrbBlue {
+  position: fixed;
+  top: -150px;
+  right: -100px;
+  width: 500px;
+  height: 500px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(10, 132, 255, 0.12) 0%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ambientOrbPurple {
+  position: fixed;
+  bottom: 10%;
+  left: -150px;
+  width: 600px;
+  height: 600px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(175, 82, 222, 0.08) 0%, transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mainContent {
+  flex: 1;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* Top Stats Summary Banner */
+.statsBanner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.bannerCard {
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bannerIconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.iconStreak {
+  background: rgba(255, 159, 10, 0.15);
+  color: var(--accent-orange);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+}
+
+.iconTarget {
+  background: rgba(48, 209, 88, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(48, 209, 88, 0.3);
+}
+
+.iconRank {
+  background: rgba(10, 132, 255, 0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(10, 132, 255, 0.3);
+}
+
+.iconRevisit {
+  background: rgba(175, 82, 222, 0.15);
+  color: var(--accent-purple);
+  border: 1px solid rgba(175, 82, 222, 0.3);
+}
+
+.bannerInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.bannerLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--label-tertiary);
+}
+
+.bannerValue {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--label-primary);
+  line-height: 1.2;
+}
+
+.bannerSubtext {
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+}
+
+/* Today Tab Layout */
+.todayGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.75rem;
+}
+
+@media (max-width: 960px) {
+  .todayGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.colLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.colRight {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* Footer */
+.appFooter {
+  border-top: 1px solid var(--glass-border);
+  background: var(--glass-bg-subtle);
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--label-tertiary);
+  margin-top: auto;
+  z-index: 1;
+}
+
+.footerLinks {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.footerLinks a {
+  color: var(--label-secondary);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.footerLinks a:hover {
+  color: var(--label-primary);
+}

@@ -1,0 +1,195 @@
+.container {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.titleArea {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.heading {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--label-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.subheading {
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+}
+
+.metricsGroup {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.metricBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.metricNum {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--label-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.metricLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--label-tertiary);
+  letter-spacing: 0.04em;
+}
+
+.scrollArea {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  position: relative;
+}
+
+.heatmapTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 780px;
+}
+
+.monthsRow {
+  display: flex;
+  padding-left: 2rem;
+  font-size: 0.6875rem;
+  color: var(--label-tertiary);
+  font-weight: 600;
+  height: 1.25rem;
+}
+
+.monthLabel {
+  flex-shrink: 0;
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.gridBody {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.daysColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 1.5rem;
+  height: 98px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--label-tertiary);
+  text-align: right;
+  padding-right: 0.25rem;
+}
+
+.weeksContainer {
+  display: flex;
+  gap: 3px;
+}
+
+.weekCol {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  transition: transform 0.1s ease, outline 0.1s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.cell:hover {
+  transform: scale(1.35);
+  z-index: 10;
+  outline: 1px solid #FFFFFF;
+}
+
+.lvl0 {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lvl1 {
+  background: rgba(48, 209, 88, 0.3);
+  border: 1px solid rgba(48, 209, 88, 0.45);
+}
+
+.lvl2 {
+  background: rgba(48, 209, 88, 0.55);
+  border: 1px solid rgba(48, 209, 88, 0.7);
+}
+
+.lvl3 {
+  background: #30D158;
+  box-shadow: 0 0 6px rgba(48, 209, 88, 0.45);
+}
+
+.lvl4 {
+  background: #20E360;
+  box-shadow: 0 0 10px rgba(32, 227, 96, 0.8);
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  color: var(--label-tertiary);
+  margin-top: 0.5rem;
+}
+
+.legendBox {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.tooltipBox {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--label-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 20;
+}

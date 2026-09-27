@@ -1,0 +1,341 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.75rem;
+  position: relative;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.titleArea {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.heading {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--label-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.subheading {
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+}
+
+.presetBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  background: var(--glass-bg-subtle);
+  border: 1px solid var(--glass-border);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
+.customizeBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.4375rem 0.875rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--label-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.customizeBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.mainContent {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  align-items: center;
+  gap: 2rem;
+}
+
+@media (max-width: 640px) {
+  .mainContent {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+}
+
+.ringsWrapper {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svgRings {
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.ringCenterInfo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.centerPercentage {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--label-primary);
+  line-height: 1;
+}
+
+.centerLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--label-tertiary);
+  margin-top: 0.25rem;
+}
+
+.completionBadge {
+  margin-top: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(48, 209, 88, 0.2);
+  border: 1px solid rgba(48, 209, 88, 0.4);
+  color: var(--accent-green);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.statsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  transition: background 0.12s ease;
+}
+
+.statRow:hover {
+  background: var(--surface-elevated);
+}
+
+.statLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.statDot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.statName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.statCount {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.currentSolved {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--label-primary);
+}
+
+.targetCount {
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+}
+
+.checkIcon {
+  color: var(--accent-green);
+  margin-left: 0.5rem;
+}
+
+.nearMissBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  color: var(--label-secondary);
+  margin-top: 0.25rem;
+}
+
+.nearMissHighlight {
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
+.atRiskBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(255, 159, 10, 0.12);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  border-radius: 9999px;
+  color: var(--accent-orange);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.weeklyCard {
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.weeklyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+}
+
+.weeklyTitle {
+  font-weight: 600;
+  color: var(--label-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.endowedBadge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  background: rgba(10, 132, 255, 0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(10, 132, 255, 0.3);
+}
+
+.weeklyTrack {
+  height: 6px;
+  background: var(--surface-elevated);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.weeklyFill {
+  height: 100%;
+  background: linear-gradient(90deg, #0A84FF, #BF5AF2);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.weeklyFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--label-tertiary);
+}
+
+.ambientCompanion {
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--glass-border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ambientLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ambientAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  object-fit: cover;
+  border: 1px solid var(--glass-border);
+}
+
+.ambientMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.ambientName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.ambientStatus {
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+}
+
+.ambientRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-green);
+}

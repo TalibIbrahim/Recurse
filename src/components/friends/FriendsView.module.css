@@ -1,0 +1,414 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+/* Incoming Pokes / Nudges Alert Banner */
+.pokesAlertBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  background: rgba(10, 132, 255, 0.12);
+  border: 1px solid rgba(10, 132, 255, 0.3);
+  border-radius: 14px;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pokeAlertLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pokeAlertIconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: var(--accent-blue);
+  color: #FFFFFF;
+}
+
+.pokeAlertTextCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.pokeAlertTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--label-primary);
+}
+
+.pokeAlertSub {
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+}
+
+.pokeAlertDismissBtn {
+  padding: 0.3125rem 0.625rem;
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--glass-border);
+  color: var(--label-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pokeAlertDismissBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.searchCard {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.searchBarWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.875rem;
+  color: var(--label-tertiary);
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.625rem 2.25rem 0.625rem 2.5rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--label-primary);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+}
+
+.searchResultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+
+.searchResultRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.searchResultRow:hover {
+  background: var(--surface-elevated);
+}
+
+.sendRequestBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  background: var(--accent-blue);
+  color: #FFFFFF;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.sendRequestBtn:hover {
+  opacity: 0.9;
+}
+
+.pendingSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--label-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pendingCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
+
+.pendingActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.acceptBtn {
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  background: var(--accent-green);
+  color: #FFFFFF;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rejectBtn {
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--label-secondary);
+  border: 1px solid var(--glass-border);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.rejectBtn:hover {
+  color: var(--accent-red);
+}
+
+.friendsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.friendCardInner {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cardHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.friendProfileGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatarContainer {
+  position: relative;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.friendAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  object-fit: cover;
+  border: 1px solid var(--glass-border);
+}
+
+.onlineBadge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0.6875rem;
+  height: 0.6875rem;
+  background: var(--accent-green);
+  border: 2px solid var(--surface-secondary);
+  border-radius: 9999px;
+}
+
+.nameGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.friendName {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.friendHandle {
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+}
+
+.streakPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(255, 159, 10, 0.15);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  color: var(--accent-orange);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.friendStatsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  padding: 0.625rem;
+  background: var(--surface-secondary);
+  border-radius: 10px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.statLabel {
+  font-size: 0.6875rem;
+  color: var(--label-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.statVal {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--label-primary);
+}
+
+.friendActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+}
+
+.actionButtonGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Nudge / Poke Button */
+.pokeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(10, 132, 255, 0.15);
+  border: 1px solid rgba(10, 132, 255, 0.3);
+  color: var(--accent-blue);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pokeBtn:hover:not(:disabled) {
+  background: var(--accent-blue);
+  color: #FFFFFF;
+}
+
+.pokeBtnDisabled {
+  background: var(--surface-secondary);
+  border-color: var(--glass-border);
+  color: var(--label-tertiary);
+  cursor: not-allowed;
+}
+
+.duelPeerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 159, 10, 0.15);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  color: var(--accent-orange);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.duelPeerBtn:hover {
+  background: var(--accent-orange);
+  color: #FFFFFF;
+}
+
+.removeBtn {
+  background: transparent;
+  border: none;
+  color: var(--label-tertiary);
+  cursor: pointer;
+  padding: 0.375rem;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.removeBtn:hover {
+  color: var(--accent-red);
+}
+
+.viewSolvesBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--surface-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--label-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.viewSolvesBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
