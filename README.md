@@ -182,10 +182,3 @@ To connect Recurse to your own Supabase project:
 4. Click the Recurse icon in your browser toolbar to enter your server URL (`https://your-recurse-deployment.pages.dev` or `http://localhost:5173`) and API Token.
 5. Solve problems on `leetcode.com` as normal. When your submission shows "Accepted", Recurse automatically ingests the solve.
 
----
-
-## Verification & Quality Standards
-
-- **Zero Emojis Policy:** Verified with an automated scanner. All UI visual cues utilize crisp vector SVG icons (`lucide-react`) and Apple-inspired typographic hierarchy.
-- **Type Safety:** 100% strict TypeScript compliance with zero `any` overrides.
-- **Git Privacy:** Root `.gitignore` includes `.*/` to guarantee internal agent logs and private configurations are never committed to version control.

@@ -1,21 +1,25 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
   Target,
   Trophy,
   RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 import styles from './App.module.css';
 
 // Layout & UI
 import Navbar, { NavTabId } from './components/layout/Navbar';
 import GlassCard from './components/ui/GlassCard';
+import Toast from './components/ui/Toast';
+import LandingPage from './components/landing/LandingPage';
 
 // Modals
 import AuthModal from './components/auth/AuthModal';
+import OnboardingModal, { OnboardingData } from './components/onboarding/OnboardingModal';
 import GoalSettingModal from './components/goals/GoalSettingModal';
 import LogAttemptModal from './components/problems/LogAttemptModal';
 import ProblemCommentsModal from './components/comments/ProblemCommentsModal';
@@ -61,16 +65,19 @@ export function App() {
     user,
     profile,
     isDemo,
+    loading: authLoading,
     signInWithEmail,
     signUpWithEmail,
     signInAsDemoUser,
+    enterDemoMode,
+    exitDemoMode,
     signOut,
+    updateProfile,
   } = useAuth();
 
   const currentUserId = user?.id;
 
   const {
-    goal,
     preset,
     cadence,
     progress,
@@ -136,11 +143,38 @@ export function App() {
 
   // Modals state
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [recapModalOpen, setRecapModalOpen] = useState(false);
   const [duelModalOpen, setDuelModalOpen] = useState(false);
   const [statCardModalOpen, setStatCardModalOpen] = useState(false);
   const [extensionModalOpen, setExtensionModalOpen] = useState(false);
+
+  // Toast feedback state
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'info' | 'error';
+    visible: boolean;
+  }>({
+    message: '',
+    type: 'success',
+    visible: false,
+  });
+
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setToast({ message, type, visible: true });
+  };
+
+  // Check if newly signed in non-demo user needs onboarding
+  useEffect(() => {
+    if (user && !isDemo) {
+      const hasCompleted = localStorage.getItem('recurse_onboarding_completed');
+      if (!hasCompleted && !profile?.identity_label) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [user, isDemo, profile?.identity_label]);
 
   const [logModalState, setLogModalState] = useState<{
     isOpen: boolean;
@@ -194,15 +228,127 @@ export function App() {
     });
   };
 
+  const handleAuthSuccess = (type: 'signin' | 'signup', username?: string) => {
+    setAuthModalOpen(false);
+    if (type === 'signup') {
+      showToast(`Account created! Welcome to Recurse, ${username || 'friend'}.`, 'success');
+      setShowOnboarding(true);
+    } else {
+      showToast(`Signed in successfully. Welcome back!`, 'success');
+    }
+  };
+
+  const handleCompleteOnboarding = async (data: OnboardingData) => {
+    try {
+      await updateProfile({
+        full_name: data.fullName,
+        leetcode_username: data.leetcodeUsername,
+        identity_label: {
+          title: data.persona,
+          description: `Dedicated ${data.persona.toLowerCase()} practicing on Recurse`,
+          category: 'consistency',
+        },
+      });
+
+      await updateCustomGoal(
+        progress.easy_target,
+        progress.medium_target,
+        progress.hard_target,
+        data.weeklyTarget,
+        data.cadence
+      );
+
+      localStorage.setItem('recurse_onboarding_completed', 'true');
+      setShowOnboarding(false);
+      showToast('Profile and practice cadence configured! Happy problem solving.', 'success');
+    } catch (err: unknown) {
+      console.error('Onboarding completion error:', err);
+      setShowOnboarding(false);
+    }
+  };
+
   // Top Stats Summary
   const currentStreak = streak?.current_streak ?? 0;
   const userRank = leaderboard.find((u) => u.is_current_user)?.rank ?? 1;
+
+  // If user is neither logged in nor in demo mode, show Landing Page
+  if (!authLoading && !user && !isDemo) {
+    return (
+      <>
+        <LandingPage
+          onOpenAuth={(mode) => {
+            setAuthModalMode(mode);
+            setAuthModalOpen(true);
+          }}
+          onExploreDemo={() => {
+            enterDemoMode();
+            showToast('Entered Demo Sandbox Mode', 'info');
+          }}
+        />
+
+        <AuthModal
+          isOpen={authModalOpen}
+          initialMode={authModalMode}
+          onClose={() => setAuthModalOpen(false)}
+          onSignInWithEmail={signInWithEmail}
+          onSignUpWithEmail={signUpWithEmail}
+          onSignInAsDemo={() => {
+            enterDemoMode();
+            setAuthModalOpen(false);
+            showToast('Entered Demo Sandbox Mode', 'info');
+          }}
+          onSuccess={handleAuthSuccess}
+        />
+
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          visible={toast.visible}
+          onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
+        />
+      </>
+    );
+  }
 
   return (
     <div className={styles.appRoot}>
       {/* Subtle Ambient Apple Blur Orbs */}
       <div className={styles.ambientOrbBlue} aria-hidden="true" />
       <div className={styles.ambientOrbPurple} aria-hidden="true" />
+
+      {/* Demo Sandbox Top Banner */}
+      {isDemo && (
+        <div className={styles.demoNoticeBar}>
+          <div className={styles.demoNoticeText}>
+            <Sparkles size={14} className="text-[#0A84FF]" />
+            <span>
+              <strong>Demo Sandbox Mode</strong> — Viewing simulated peer pod data. Changes persist locally.
+            </span>
+          </div>
+          <div className={styles.demoNoticeActions}>
+            <button
+              type="button"
+              className={styles.demoNoticeExitBtn}
+              onClick={() => {
+                exitDemoMode();
+                showToast('Exited demo mode', 'info');
+              }}
+            >
+              Exit Demo
+            </button>
+            <button
+              type="button"
+              className={styles.demoNoticeRegisterBtn}
+              onClick={() => {
+                setAuthModalMode('signup');
+                setAuthModalOpen(true);
+              }}
+            >
+              Create Account
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Navigation Header */}
       <Navbar
@@ -211,8 +357,14 @@ export function App() {
         streakCount={currentStreak}
         currentProfile={profile}
         isDemo={isDemo}
-        onOpenAuthModal={() => setAuthModalOpen(true)}
-        onSignOut={signOut}
+        onOpenAuthModal={() => {
+          setAuthModalMode('signin');
+          setAuthModalOpen(true);
+        }}
+        onSignOut={async () => {
+          await signOut();
+          showToast('Signed out successfully', 'info');
+        }}
         onOpenRecap={() => setRecapModalOpen(true)}
         onOpenDuel={() => setDuelModalOpen(true)}
         onOpenShareCard={() => setStatCardModalOpen(true)}
@@ -408,10 +560,23 @@ export function App() {
       {/* Global Modals */}
       <AuthModal
         isOpen={authModalOpen}
+        initialMode={authModalMode}
         onClose={() => setAuthModalOpen(false)}
         onSignInWithEmail={signInWithEmail}
         onSignUpWithEmail={signUpWithEmail}
-        onSignInAsDemo={signInAsDemoUser}
+        onSignInAsDemo={() => {
+          enterDemoMode();
+          setAuthModalOpen(false);
+          showToast('Entered Demo Sandbox Mode', 'info');
+        }}
+        onSuccess={handleAuthSuccess}
+      />
+
+      {/* First-time Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        userProfile={profile}
+        onComplete={handleCompleteOnboarding}
       />
 
       <GoalSettingModal
@@ -474,6 +639,14 @@ export function App() {
         isOpen={extensionModalOpen}
         onClose={() => setExtensionModalOpen(false)}
         userId={currentUserId}
+      />
+
+      {/* Global Toast Notification */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
       />
 
       {/* Apple-style Footer */}

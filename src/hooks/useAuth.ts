@@ -26,6 +26,8 @@ export interface UseAuthReturn {
   ) => Promise<{ success: boolean; error?: string }>;
   readonly signInWithOAuth: (provider: 'github' | 'google') => Promise<{ success: boolean; error?: string }>;
   readonly signInAsDemoUser: () => void;
+  readonly enterDemoMode: () => void;
+  readonly exitDemoMode: () => void;
   readonly signOut: () => Promise<void>;
   readonly updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
 }
@@ -61,10 +63,6 @@ export function useAuth(): UseAuthReturn {
         .eq('id', sbUser.id)
         .single();
 
-      if (profileErr) {
-        throw profileErr;
-      }
-
       if (data) {
         const fullProfile: Profile = data as Profile;
         setProfile(fullProfile);
@@ -72,6 +70,27 @@ export function useAuth(): UseAuthReturn {
           id: sbUser.id,
           email: sbUser.email || '',
           profile: fullProfile,
+        });
+      } else {
+        // Fallback profile if row is not created yet
+        const fallbackProfile: Profile = {
+          id: sbUser.id,
+          username: sbUser.user_metadata?.username || sbUser.email?.split('@')[0] || 'coder',
+          full_name: sbUser.user_metadata?.full_name || sbUser.email?.split('@')[0] || 'Coder',
+          avatar_url: sbUser.user_metadata?.avatar_url || '',
+          bio: '',
+          leetcode_username: '',
+          identity_label: undefined,
+          is_online: true,
+          last_seen_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setProfile(fallbackProfile);
+        setUser({
+          id: sbUser.id,
+          email: sbUser.email || '',
+          profile: fallbackProfile,
         });
       }
     } catch (err: unknown) {
@@ -83,16 +102,44 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
+  // Listen to external demo mode events
+  useEffect(() => {
+    const handleDemoChange = (e: Event) => {
+      const active = (e as CustomEvent<boolean>).detail;
+      setIsDemo(active);
+      if (active) {
+        syncDemoUser();
+      } else {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      }
+    };
+
+    window.addEventListener('recurse_demo_mode_changed', handleDemoChange);
+    return () => {
+      window.removeEventListener('recurse_demo_mode_changed', handleDemoChange);
+    };
+  }, [syncDemoUser]);
+
   useEffect(() => {
     const demoActive = isDemoModeActive();
     setIsDemo(demoActive);
 
-    if (demoActive || !isSupabaseConfigured) {
+    if (demoActive) {
       syncDemoUser();
       const unsub = demoStore.subscribe('auth', () => {
         syncDemoUser();
       });
       return unsub;
+    }
+
+    if (!isSupabaseConfigured) {
+      // Supabase is not configured and demo is not active: logged out visitor
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+      return;
     }
 
     // Supabase Live Auth Flow
@@ -148,8 +195,13 @@ export function useAuth(): UseAuthReturn {
 
   const signInWithEmail = async (email: string, password: string) => {
     setError(null);
-    if (isDemo || !isSupabaseConfigured) {
-      // In demo mode, sign in switches to demo user
+    if (isDemo) {
+      syncDemoUser();
+      return { success: true };
+    }
+
+    if (!isSupabaseConfigured) {
+      // Local fallback
       syncDemoUser();
       return { success: true };
     }
@@ -175,7 +227,16 @@ export function useAuth(): UseAuthReturn {
     fullName?: string
   ) => {
     setError(null);
-    if (isDemo || !isSupabaseConfigured) {
+    if (isDemo) {
+      demoStore.updateProfile(DEMO_USER_ID, {
+        username,
+        full_name: fullName || username,
+      });
+      syncDemoUser();
+      return { success: true };
+    }
+
+    if (!isSupabaseConfigured) {
       demoStore.updateProfile(DEMO_USER_ID, {
         username,
         full_name: fullName || username,
@@ -227,17 +288,28 @@ export function useAuth(): UseAuthReturn {
     }
   };
 
-  const signInAsDemoUser = () => {
+  const enterDemoMode = useCallback(() => {
     setDemoModeActive(true);
     setIsDemo(true);
     syncDemoUser();
+  }, [syncDemoUser]);
+
+  const exitDemoMode = useCallback(() => {
+    setDemoModeActive(false);
+    setIsDemo(false);
+    setUser(null);
+    setProfile(null);
+    setSession(null);
+    setLoading(false);
+  }, []);
+
+  const signInAsDemoUser = () => {
+    enterDemoMode();
   };
 
   const signOut = async () => {
-    if (isDemo || !isSupabaseConfigured) {
-      // In demo mode, sign out re-initializes or stays as demo
-      setUser(null);
-      setProfile(null);
+    if (isDemo) {
+      exitDemoMode();
       return;
     }
 
@@ -292,6 +364,8 @@ export function useAuth(): UseAuthReturn {
     signUpWithEmail,
     signInWithOAuth,
     signInAsDemoUser,
+    enterDemoMode,
+    exitDemoMode,
     signOut,
     updateProfile,
   };

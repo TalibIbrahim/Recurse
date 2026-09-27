@@ -1736,18 +1736,14 @@ export const demoStore = new DemoStore();
 // ============================================================================
 
 export function isDemoModeActive(): boolean {
-  if (typeof window === 'undefined') return true;
-  if (!isSupabaseConfigured) return true;
+  if (typeof window === 'undefined') return false;
   const stored = localStorage.getItem(DEMO_ACTIVE_KEY);
-  if (stored !== null) {
-    return stored === 'true';
-  }
-  return !isSupabaseConfigured;
+  return stored === 'true';
 }
 
 export function setDemoModeActive(active: boolean): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(DEMO_ACTIVE_KEY, active ? 'true' : 'false');
-    window.location.reload();
+    window.dispatchEvent(new CustomEvent('recurse_demo_mode_changed', { detail: active }));
   }
 }

@@ -177,3 +177,64 @@
 .footerLinks a:hover {
   color: var(--label-primary);
 }
+
+/* Demo Sandbox Notice Bar */
+.demoNoticeBar {
+  background: rgba(10, 132, 255, 0.08);
+  border-bottom: 1px solid rgba(10, 132, 255, 0.2);
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8125rem;
+  color: #f4f4f5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  position: relative;
+  z-index: 50;
+}
+
+.demoNoticeText {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.demoNoticeActions {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.demoNoticeExitBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f4f4f5;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.demoNoticeExitBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.demoNoticeRegisterBtn {
+  background: #0a84ff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.demoNoticeRegisterBtn:hover {
+  background: #0077ed;
+}
+

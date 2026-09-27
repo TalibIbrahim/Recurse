@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { X, Sparkles, AlertCircle, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import styles from './AuthModal.module.css';
 import { RecurseLogo } from '../ui/RecurseLogo';
 
@@ -17,6 +17,8 @@ export interface AuthModalProps {
     fullName?: string
   ) => Promise<{ success: boolean; error?: string }>;
   onSignInAsDemo: () => void;
+  onSuccess?: (type: 'signin' | 'signup', username?: string) => void;
+  initialMode?: 'signin' | 'signup';
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -25,14 +27,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSignInWithEmail,
   onSignUpWithEmail,
   onSignInAsDemo,
+  onSuccess,
+  initialMode = 'signin',
 }) => {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successInfo, setSuccessInfo] = useState<{ title: string; subtitle: string } | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setErrorMessage(null);
+      setSuccessInfo(null);
+    }
+  }, [isOpen, initialMode]);
 
   if (!isOpen) return null;
 
@@ -41,7 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMessage(null);
 
     if (!email || !password) {
-      setErrorMessage('Please fill in both email and password.');
+      setErrorMessage('Please enter both your email and password.');
       return;
     }
 
@@ -50,33 +63,57 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       if (mode === 'signin') {
         const res = await onSignInWithEmail(email, password);
         if (!res.success) {
-          setErrorMessage(res.error || 'Invalid credentials');
+          setErrorMessage(res.error || 'Invalid email or password.');
+          setLoading(false);
         } else {
-          onClose();
+          setSuccessInfo({
+            title: 'Welcome Back',
+            subtitle: 'Signing you in to your practice workspace...',
+          });
+          setTimeout(() => {
+            onSuccess?.('signin');
+            onClose();
+            setSuccessInfo(null);
+          }, 800);
         }
       } else {
         if (!username) {
-          setErrorMessage('Please choose a username.');
+          setErrorMessage('Please choose a username for peer accountability.');
           setLoading(false);
           return;
         }
         const res = await onSignUpWithEmail(email, password, username, fullName);
         if (!res.success) {
-          setErrorMessage(res.error || 'Failed to create account');
+          setErrorMessage(res.error || 'Failed to create your account.');
+          setLoading(false);
         } else {
-          onClose();
+          setSuccessInfo({
+            title: 'Account Created',
+            subtitle: 'Setting up your customized practice profile...',
+          });
+          setTimeout(() => {
+            onSuccess?.('signup', username);
+            onClose();
+            setSuccessInfo(null);
+          }, 900);
         }
       }
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Authentication failed');
-    } finally {
+      setErrorMessage(err instanceof Error ? err.message : 'Authentication failed.');
       setLoading(false);
     }
   };
 
   const handleDemoLogin = () => {
-    onSignInAsDemo();
-    onClose();
+    setSuccessInfo({
+      title: 'Entering Demo Sandbox',
+      subtitle: 'Loading simulated peer accountability data...',
+    });
+    setTimeout(() => {
+      onSignInAsDemo();
+      onClose();
+      setSuccessInfo(null);
+    }, 600);
   };
 
   return (
@@ -92,7 +129,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         >
           <div className={styles.sheenTop} />
 
-          {/* Modal Header */}
+          {/* Success Reaction View */}
+          {successInfo ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className={styles.successBox}
+            >
+              <div className={styles.successIconCircle}>
+                <CheckCircle2 size={32} />
+              </div>
+              <h3 className={styles.successTitle}>{successInfo.title}</h3>
+              <p className={styles.successSubtitle}>{successInfo.subtitle}</p>
+            </motion.div>
+          ) : (
+            <>
+              {/* Modal Header */}
           <div className={styles.modalHeader}>
             <div className={styles.titleArea}>
               <div className="mb-2">
@@ -273,6 +325,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               )}
             </button>
           </form>
+          </>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>

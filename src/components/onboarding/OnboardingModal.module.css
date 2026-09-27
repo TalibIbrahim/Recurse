@@ -1,0 +1,265 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.modalCard {
+  position: relative;
+  width: 100%;
+  max-width: 32rem;
+  background: var(--glass-bg-elevated);
+  backdrop-filter: blur(36px);
+  -webkit-backdrop-filter: blur(36px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.6);
+  padding: 2rem;
+  overflow: hidden;
+}
+
+.sheenTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-sheen), transparent);
+  opacity: 0.9;
+}
+
+.stepIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.stepBar {
+  flex: 1;
+  height: 3px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.stepBarActive {
+  background: var(--accent-blue);
+  box-shadow: 0 0 10px rgba(10, 132, 255, 0.4);
+}
+
+.stepBarCompleted {
+  background: var(--accent-green);
+}
+
+.modalHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 1.5rem;
+}
+
+.badgeHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--label-primary);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--label-secondary);
+  line-height: 1.5;
+}
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--label-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+  background: var(--surface-elevated);
+}
+
+.personaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+}
+
+.personaCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.875rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.personaCard:hover {
+  background: var(--surface-elevated);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.personaActive {
+  background: rgba(10, 132, 255, 0.15);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 16px -2px rgba(10, 132, 255, 0.35);
+}
+
+.personaTitle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.personaDesc {
+  font-size: 0.6875rem;
+  color: var(--label-tertiary);
+  line-height: 1.35;
+}
+
+.featureList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.featureCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: var(--surface-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+}
+
+.featureIconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  background: rgba(10, 132, 255, 0.12);
+  border: 1px solid rgba(10, 132, 255, 0.25);
+  color: var(--accent-blue);
+  flex-shrink: 0;
+}
+
+.featureMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.featureTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--label-primary);
+}
+
+.featureDesc {
+  font-size: 0.75rem;
+  color: var(--label-secondary);
+  line-height: 1.4;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.backBtn {
+  padding: 0.625rem 1rem;
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  color: var(--label-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.backBtn:hover {
+  color: var(--label-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nextBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6875rem 1.375rem;
+  background: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
+  border-radius: 10px;
+  color: #FFFFFF;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(10, 132, 255, 0.35);
+  transition: all 0.15s ease;
+}
+
+.nextBtn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
