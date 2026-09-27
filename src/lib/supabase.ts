@@ -21,24 +21,18 @@ import { SEED_PROBLEMS, ALL_BADGES } from '../data/problemsSeed';
 // Environment & Supabase Client Initialization
 // ============================================================================
 
-const envUrl = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_URL || '';
-const envKey = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_ANON_KEY || '';
+const DEFAULT_SUPABASE_URL = 'https://nhsbgweplsbiodxbdbcc.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B';
 
-const isPlaceholderUrl =
-  !envUrl ||
-  envUrl.includes('placeholder') ||
-  envUrl.includes('YOUR_SUPABASE') ||
-  !envUrl.startsWith('http');
+const envUrl = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const envKey = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
 
-export const isSupabaseConfigured = Boolean(envUrl && envKey && !isPlaceholderUrl);
+export const isSupabaseConfigured = true;
 
-// Safe initialization of the Supabase client
-const dummyUrl = 'https://demo-codegrind-placeholder.supabase.co';
-const dummyKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key_for_codegrind_preview';
-
+// Direct initialization of the Supabase client
 export const supabase: SupabaseClient = createClient(
-  isSupabaseConfigured ? envUrl : dummyUrl,
-  isSupabaseConfigured ? envKey : dummyKey,
+  envUrl,
+  envKey,
   {
     auth: {
       persistSession: true,
@@ -1736,14 +1730,9 @@ export const demoStore = new DemoStore();
 // ============================================================================
 
 export function isDemoModeActive(): boolean {
-  if (typeof window === 'undefined') return false;
-  const stored = localStorage.getItem(DEMO_ACTIVE_KEY);
-  return stored === 'true';
+  return false;
 }
 
-export function setDemoModeActive(active: boolean): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(DEMO_ACTIVE_KEY, active ? 'true' : 'false');
-    window.dispatchEvent(new CustomEvent('recurse_demo_mode_changed', { detail: active }));
-  }
+export function setDemoModeActive(_active: boolean): void {
+  // Demo mode permanently disabled
 }

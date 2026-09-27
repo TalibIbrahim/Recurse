@@ -11,9 +11,8 @@ import {
   Laptop,
   CheckCircle2,
   ArrowRight,
-  Sparkles,
-  Play,
   ShieldCheck,
+  LogIn,
 } from 'lucide-react';
 import styles from './LandingPage.module.css';
 import { SquaresBackground } from '../ui/SquaresBackground';
@@ -21,12 +20,10 @@ import { RecurseLogo } from '../ui/RecurseLogo';
 
 export interface LandingPageProps {
   onOpenAuth: (mode: 'signin' | 'signup') => void;
-  onExploreDemo: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenAuth,
-  onExploreDemo,
 }) => {
   return (
     <div className={styles.container}>
@@ -47,16 +44,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <RecurseLogo size={24} showWordmark={true} />
 
           <div className={styles.navActions}>
-            <button
-              type="button"
-              className={styles.navDemoBtn}
-              onClick={onExploreDemo}
-              title="Explore the application in an instant sandbox"
-            >
-              <Sparkles size={14} className="text-[#0A84FF]" />
-              <span>Demo Sandbox</span>
-            </button>
-
             <button
               type="button"
               className={styles.navSignInBtn}
@@ -115,10 +102,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 type="button"
                 className={styles.secondaryCta}
-                onClick={onExploreDemo}
+                onClick={() => onOpenAuth('signin')}
               >
-                <Play size={15} className="text-[#0A84FF]" />
-                <span>Explore Demo Sandbox</span>
+                <LogIn size={15} className="text-[#0A84FF]" />
+                <span>Sign In to Account</span>
               </button>
             </div>
 
@@ -142,154 +129,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </motion.div>
         </section>
-
-        {/* Teaser Preview Card */}
-        <div className={styles.previewWrapper}>
-          <div className={styles.previewCard}>
-            <div className={styles.previewHeader}>
-              <div className={styles.windowDots}>
-                <span className={styles.dot} />
-                <span className={styles.dot} />
-                <span className={styles.dot} />
-              </div>
-              <div className={styles.previewTitleBar}>
-                recurse.app / dashboard / today
-              </div>
-              <div className="flex items-center gap-2 text-xs text-[#30D158] font-medium">
-                <span className="w-2 h-2 rounded-full bg-[#30D158] animate-pulse" />
-                <span>Live Pod</span>
-              </div>
-            </div>
-
-            <div className={styles.previewContent}>
-              {/* Daily Rings Card */}
-              <div className={styles.previewRingsCard}>
-                <svg
-                  className={styles.previewRingSvg}
-                  viewBox="0 0 100 100"
-                  aria-label="Concentric practice rings"
-                >
-                  {/* Outer Ring: Hard (Red) */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    stroke="rgba(255, 69, 58, 0.15)"
-                    strokeWidth="8"
-                    fill="none"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    stroke="#FF453A"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray="251.2"
-                    strokeDashoffset="125.6"
-                    strokeLinecap="round"
-                    transform="rotate(-90 50 50)"
-                  />
-                  {/* Middle Ring: Medium (Amber) */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="30"
-                    stroke="rgba(255, 159, 10, 0.15)"
-                    strokeWidth="8"
-                    fill="none"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="30"
-                    stroke="#FF9F0A"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray="188.4"
-                    strokeDashoffset="47.1"
-                    strokeLinecap="round"
-                    transform="rotate(-90 50 50)"
-                  />
-                  {/* Inner Ring: Easy (Green) */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="20"
-                    stroke="rgba(48, 209, 88, 0.15)"
-                    strokeWidth="8"
-                    fill="none"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="20"
-                    stroke="#30D158"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray="125.6"
-                    strokeDashoffset="0"
-                    strokeLinecap="round"
-                    transform="rotate(-90 50 50)"
-                  />
-                </svg>
-
-                <div className={styles.ringStats}>
-                  <div className={styles.ringStatRow}>
-                    <span
-                      className={styles.statDot}
-                      style={{ background: '#30D158' }}
-                    />
-                    <span className={styles.statLabel}>Easy</span>
-                    <span className={styles.statValue}>1 / 1 Solved</span>
-                  </div>
-                  <div className={styles.ringStatRow}>
-                    <span
-                      className={styles.statDot}
-                      style={{ background: '#FF9F0A' }}
-                    />
-                    <span className={styles.statLabel}>Medium</span>
-                    <span className={styles.statValue}>2 / 2 Solved</span>
-                  </div>
-                  <div className={styles.ringStatRow}>
-                    <span
-                      className={styles.statDot}
-                      style={{ background: '#FF453A' }}
-                    />
-                    <span className={styles.statLabel}>Hard</span>
-                    <span className={styles.statValue}>0 / 1 Target</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Peer Activity Feed Teaser */}
-              <div className={styles.previewFeedCard}>
-                <div className={styles.feedHeader}>Peer Pod Activity</div>
-                <div className={styles.feedItem}>
-                  <div className={styles.feedUser}>
-                    <span className={styles.feedAvatar}>SL</span>
-                    <span>Sarah Lin</span>
-                  </div>
-                  <span className={styles.feedProblem}>Coin Change (DP)</span>
-                </div>
-                <div className={styles.feedItem}>
-                  <div className={styles.feedUser}>
-                    <span className={styles.feedAvatar}>DK</span>
-                    <span>David Kim</span>
-                  </div>
-                  <span className={styles.feedProblem}>Course Schedule II</span>
-                </div>
-                <div className={styles.feedItem}>
-                  <div className={styles.feedUser}>
-                    <span className={styles.feedAvatar}>EV</span>
-                    <span>Elena Vance</span>
-                  </div>
-                  <span className={styles.feedProblem}>Trapping Rain Water</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Feature Showcase Grid */}
         <section className={styles.section}>
@@ -386,7 +225,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </h2>
           <p className={styles.ctaSubtitle}>
             Join software engineers maintaining consistent interview readiness.
-            Explore the sandbox first or create your personal account in seconds.
+            Create your personal account in seconds and start closing your practice rings.
           </p>
           <div className={styles.heroCtas} style={{ marginBottom: 0 }}>
             <button
@@ -400,10 +239,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               type="button"
               className={styles.secondaryCta}
-              onClick={onExploreDemo}
+              onClick={() => onOpenAuth('signin')}
             >
-              <Play size={15} className="text-[#0A84FF]" />
-              <span>Explore Demo Sandbox</span>
+              <LogIn size={15} className="text-[#0A84FF]" />
+              <span>Sign In</span>
             </button>
           </div>
         </section>
@@ -419,13 +258,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               type="button"
               className={styles.footerLink}
-              onClick={onExploreDemo}
-            >
-              Demo Sandbox
-            </button>
-            <button
-              type="button"
-              className={styles.footerLink}
               onClick={() => onOpenAuth('signin')}
             >
               Sign In
@@ -435,7 +267,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               className={styles.footerLink}
               onClick={() => onOpenAuth('signup')}
             >
-              Register
+              Create Account
             </button>
           </div>
         </footer>

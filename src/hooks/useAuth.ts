@@ -1,12 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  supabase,
-  isSupabaseConfigured,
-  isDemoModeActive,
-  setDemoModeActive,
-  demoStore,
-  DEMO_USER_ID,
-} from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { AuthUser, Profile } from '../data/types';
 import type { Session, User } from '@supabase/supabase-js';
 
@@ -16,7 +9,6 @@ export interface UseAuthReturn {
   readonly session: Session | null;
   readonly loading: boolean;
   readonly error: string | null;
-  readonly isDemo: boolean;
   readonly signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   readonly signUpWithEmail: (
     email: string,
@@ -25,34 +17,16 @@ export interface UseAuthReturn {
     fullName?: string
   ) => Promise<{ success: boolean; error?: string }>;
   readonly signInWithOAuth: (provider: 'github' | 'google') => Promise<{ success: boolean; error?: string }>;
-  readonly signInAsDemoUser: () => void;
-  readonly enterDemoMode: () => void;
-  readonly exitDemoMode: () => void;
   readonly signOut: () => Promise<void>;
   readonly updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function useAuth(): UseAuthReturn {
-  const [isDemo, setIsDemo] = useState<boolean>(isDemoModeActive());
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Sync demo user state
-  const syncDemoUser = useCallback(() => {
-    const p = demoStore.getCurrentProfile();
-    const demoUser: AuthUser = {
-      id: p.id,
-      email: `${p.username}@recurse.app`,
-      profile: p,
-    };
-    setUser(demoUser);
-    setProfile(p);
-    setSession(null);
-    setLoading(false);
-  }, []);
 
   // Fetch Supabase user profile
   const fetchSupabaseProfile = useCallback(async (sbUser: User) => {
@@ -61,7 +35,7 @@ export function useAuth(): UseAuthReturn {
         .from('profiles')
         .select('*')
         .eq('id', sbUser.id)
-        .single();
+        .maybeSingle();
 
       if (data) {
         const fullProfile: Profile = data as Profile;
@@ -77,7 +51,7 @@ export function useAuth(): UseAuthReturn {
           id: sbUser.id,
           username: sbUser.user_metadata?.username || sbUser.email?.split('@')[0] || 'coder',
           full_name: sbUser.user_metadata?.full_name || sbUser.email?.split('@')[0] || 'Coder',
-          avatar_url: sbUser.user_metadata?.avatar_url || '',
+          avatar_url: sbUser.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
           bio: '',
           leetcode_username: '',
           identity_label: undefined,
@@ -86,6 +60,8 @@ export function useAuth(): UseAuthReturn {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
+
+        await supabase.from('profiles').upsert(fallbackProfile);
         setProfile(fallbackProfile);
         setUser({
           id: sbUser.id,
@@ -102,47 +78,7 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
-  // Listen to external demo mode events
   useEffect(() => {
-    const handleDemoChange = (e: Event) => {
-      const active = (e as CustomEvent<boolean>).detail;
-      setIsDemo(active);
-      if (active) {
-        syncDemoUser();
-      } else {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-      }
-    };
-
-    window.addEventListener('recurse_demo_mode_changed', handleDemoChange);
-    return () => {
-      window.removeEventListener('recurse_demo_mode_changed', handleDemoChange);
-    };
-  }, [syncDemoUser]);
-
-  useEffect(() => {
-    const demoActive = isDemoModeActive();
-    setIsDemo(demoActive);
-
-    if (demoActive) {
-      syncDemoUser();
-      const unsub = demoStore.subscribe('auth', () => {
-        syncDemoUser();
-      });
-      return unsub;
-    }
-
-    if (!isSupabaseConfigured) {
-      // Supabase is not configured and demo is not active: logged out visitor
-      setUser(null);
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-
-    // Supabase Live Auth Flow
     let mounted = true;
 
     async function initAuth() {
@@ -159,6 +95,8 @@ export function useAuth(): UseAuthReturn {
           if (initialSession?.user) {
             await fetchSupabaseProfile(initialSession.user);
           } else {
+            setUser(null);
+            setProfile(null);
             setLoading(false);
           }
         }
@@ -191,27 +129,19 @@ export function useAuth(): UseAuthReturn {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchSupabaseProfile, syncDemoUser]);
+  }, [fetchSupabaseProfile]);
 
   const signInWithEmail = async (email: string, password: string) => {
     setError(null);
-    if (isDemo) {
-      syncDemoUser();
-      return { success: true };
-    }
-
-    if (!isSupabaseConfigured) {
-      // Local fallback
-      syncDemoUser();
-      return { success: true };
-    }
-
     try {
-      const { error: signInErr } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (signInErr) throw signInErr;
+      if (signInData.user) {
+        await fetchSupabaseProfile(signInData.user);
+      }
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sign in failed';
@@ -227,26 +157,8 @@ export function useAuth(): UseAuthReturn {
     fullName?: string
   ) => {
     setError(null);
-    if (isDemo) {
-      demoStore.updateProfile(DEMO_USER_ID, {
-        username,
-        full_name: fullName || username,
-      });
-      syncDemoUser();
-      return { success: true };
-    }
-
-    if (!isSupabaseConfigured) {
-      demoStore.updateProfile(DEMO_USER_ID, {
-        username,
-        full_name: fullName || username,
-      });
-      syncDemoUser();
-      return { success: true };
-    }
-
     try {
-      const { error: signUpErr } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -257,6 +169,54 @@ export function useAuth(): UseAuthReturn {
         },
       });
       if (signUpErr) throw signUpErr;
+
+      const newUserId = signUpData.user?.id;
+      if (newUserId) {
+        // Initialize profile row immediately
+        const newProfile: Profile = {
+          id: newUserId,
+          username,
+          full_name: fullName || username,
+          avatar_url: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150`,
+          bio: '',
+          leetcode_username: '',
+          identity_label: undefined,
+          is_online: true,
+          last_seen_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        await supabase.from('profiles').upsert(newProfile);
+        setProfile(newProfile);
+        setUser({ id: newUserId, email, profile: newProfile });
+
+        // Initialize streak row
+        await supabase.from('streaks').upsert({
+          user_id: newUserId,
+          current_streak: 0,
+          longest_streak: 0,
+          freezes_available: 2,
+          freezes_used: 0,
+          is_at_risk: false,
+          last_activity_date: null,
+          updated_at: new Date().toISOString(),
+        });
+
+        // Initialize daily goal row
+        await supabase.from('daily_goals').upsert({
+          user_id: newUserId,
+          date: new Date().toISOString().split('T')[0],
+          easy_target: 1,
+          medium_target: 1,
+          hard_target: 0,
+          cadence: 'both',
+          weekly_target: 10,
+          preset: 'standard',
+          updated_at: new Date().toISOString(),
+        });
+      }
+
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sign up failed';
@@ -267,11 +227,6 @@ export function useAuth(): UseAuthReturn {
 
   const signInWithOAuth = async (provider: 'github' | 'google') => {
     setError(null);
-    if (isDemo || !isSupabaseConfigured) {
-      syncDemoUser();
-      return { success: true };
-    }
-
     try {
       const { error: oAuthErr } = await supabase.auth.signInWithOAuth({
         provider,
@@ -288,31 +243,7 @@ export function useAuth(): UseAuthReturn {
     }
   };
 
-  const enterDemoMode = useCallback(() => {
-    setDemoModeActive(true);
-    setIsDemo(true);
-    syncDemoUser();
-  }, [syncDemoUser]);
-
-  const exitDemoMode = useCallback(() => {
-    setDemoModeActive(false);
-    setIsDemo(false);
-    setUser(null);
-    setProfile(null);
-    setSession(null);
-    setLoading(false);
-  }, []);
-
-  const signInAsDemoUser = () => {
-    enterDemoMode();
-  };
-
   const signOut = async () => {
-    if (isDemo) {
-      exitDemoMode();
-      return;
-    }
-
     try {
       await supabase.auth.signOut();
       setUser(null);
@@ -325,13 +256,6 @@ export function useAuth(): UseAuthReturn {
 
   const updateProfile = async (updates: Partial<Profile>) => {
     setError(null);
-    if (isDemo || !isSupabaseConfigured) {
-      const currentId = user?.id || DEMO_USER_ID;
-      const updated = demoStore.updateProfile(currentId, updates);
-      setProfile(updated);
-      return { success: true };
-    }
-
     if (!user) {
       return { success: false, error: 'User is not logged in' };
     }
@@ -359,13 +283,9 @@ export function useAuth(): UseAuthReturn {
     session,
     loading,
     error,
-    isDemo,
     signInWithEmail,
     signUpWithEmail,
     signInWithOAuth,
-    signInAsDemoUser,
-    enterDemoMode,
-    exitDemoMode,
     signOut,
     updateProfile,
   };

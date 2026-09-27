@@ -16,7 +16,6 @@ export interface AuthModalProps {
     username: string,
     fullName?: string
   ) => Promise<{ success: boolean; error?: string }>;
-  onSignInAsDemo: () => void;
   onSuccess?: (type: 'signin' | 'signup', username?: string) => void;
   initialMode?: 'signin' | 'signup';
 }
@@ -26,7 +25,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onSignInWithEmail,
   onSignUpWithEmail,
-  onSignInAsDemo,
   onSuccess,
   initialMode = 'signin',
 }) => {
@@ -104,18 +102,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleDemoLogin = () => {
-    setSuccessInfo({
-      title: 'Entering Demo Sandbox',
-      subtitle: 'Loading simulated peer accountability data...',
-    });
-    setTimeout(() => {
-      onSignInAsDemo();
-      onClose();
-      setSuccessInfo(null);
-    }, 600);
-  };
-
   return (
     <AnimatePresence>
       <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true">
@@ -166,27 +152,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               aria-label="Close dialog"
             >
               <X size={16} />
-            </button>
-          </div>
-
-          {/* Instant 1-Click Demo Explore Card */}
-          <div className={styles.demoBanner}>
-            <div className={styles.demoTextGroup}>
-              <Sparkles size={18} className={styles.demoIcon} />
-              <div>
-                <div className={styles.demoTitle}>Instant Demo Mode</div>
-                <div className={styles.demoDesc}>
-                  Explore all features with preloaded streaks, solves & friends
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              className={styles.demoActionBtn}
-              onClick={handleDemoLogin}
-            >
-              <span>Explore as Demo User (1-Click)</span>
-              <ArrowRight size={14} />
             </button>
           </div>
 

@@ -1,17 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  supabase,
-  isSupabaseConfigured,
-  isDemoModeActive,
-  demoStore,
-  DEMO_USER_ID,
-} from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import {
   DailyGoal,
   DailyGoalProgress,
   GoalPresetType,
-  ProblemDifficulty,
   GoalCadence,
+  ProblemDifficulty,
   WeeklyGoalProgress,
   DualGoalProgress,
   Profile,
@@ -61,9 +55,6 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveUserId = currentUserId || DEMO_USER_ID;
-  const isDemo = isDemoModeActive() || !isSupabaseConfigured;
-
   // Calculate start of current week (Monday 00:00:00)
   const getWeekStartIso = () => {
     const now = new Date();
@@ -75,50 +66,13 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
     return monday.toISOString();
   };
 
-  const loadDemoGoalAndSolves = useCallback(() => {
-    try {
-      const g = demoStore.getDailyGoal(effectiveUserId);
-      setGoal(g);
-
-      const todayStr = new Date().toISOString().split('T')[0];
-      const mondayIso = getWeekStartIso();
-
-      const userAttempts = demoStore.getAttempts(effectiveUserId);
-      const todayAttempts = userAttempts.filter(
-        (a) => a.status === 'solved' && a.solved_at.startsWith(todayStr)
-      );
-
-      const weeklySolves = userAttempts.filter(
-        (a) => a.status === 'solved' && a.solved_at >= mondayIso
-      ).length;
-      setWeeklySolvesCount(weeklySolves);
-
-      const streak = demoStore.getStreak(effectiveUserId);
-      setUserStreakCount(streak.current_streak);
-
-      const companion = demoStore.getAmbientFriendGoal(effectiveUserId);
-      setAmbientFriend(companion);
-
-      const diffs: ProblemDifficulty[] = [];
-      const probMap = new Map(SEED_PROBLEMS.map((p) => [p.id, p]));
-
-      todayAttempts.forEach((att) => {
-        const prob = att.problem || probMap.get(att.problem_id);
-        if (prob) {
-          diffs.push(prob.difficulty);
-        }
-      });
-
-      setSolvedDifficulties(diffs);
-      setLoading(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load demo goal';
-      setError(msg);
-      setLoading(false);
-    }
-  }, [effectiveUserId]);
-
   const loadSupabaseGoalAndSolves = useCallback(async () => {
+    if (!currentUserId) {
+      setGoal(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -129,7 +83,7 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
       const { data: goalData, error: goalErr } = await supabase
         .from('daily_goals')
         .select('*')
-        .eq('user_id', effectiveUserId)
+        .eq('user_id', currentUserId)
         .order('effective_from', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -141,7 +95,7 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
         const { data: newGoal, error: createErr } = await supabase
           .from('daily_goals')
           .insert({
-            user_id: effectiveUserId,
+            user_id: currentUserId,
             preset: 'Standard',
             cadence: 'both',
             easy_target: 1,
@@ -165,18 +119,23 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
       const { data: attemptsData, error: attErr } = await supabase
         .from('attempts')
         .select('problem_id, problems(difficulty)')
-        .eq('user_id', effectiveUserId)
+        .eq('user_id', currentUserId)
         .eq('status', 'solved')
         .gte('solved_at', `${todayStr}T00:00:00Z`);
 
       if (attErr) throw attErr;
 
       const diffs: ProblemDifficulty[] = [];
+      const probMap = new Map(SEED_PROBLEMS.map((p) => [p.id, p]));
+
       if (attemptsData) {
         attemptsData.forEach((row: unknown) => {
-          const typed = row as { problems?: { difficulty: ProblemDifficulty } };
+          const typed = row as { problem_id?: string; problems?: { difficulty: ProblemDifficulty } };
           if (typed.problems?.difficulty) {
             diffs.push(typed.problems.difficulty);
+          } else if (typed.problem_id) {
+            const fb = probMap.get(typed.problem_id);
+            if (fb) diffs.push(fb.difficulty);
           }
         });
       }
@@ -187,7 +146,7 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
       const { count: weekCount, error: weekErr } = await supabase
         .from('attempts')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', effectiveUserId)
+        .eq('user_id', currentUserId)
         .eq('status', 'solved')
         .gte('solved_at', mondayIso);
 
@@ -199,54 +158,31 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
       const { data: streakData } = await supabase
         .from('streaks')
         .select('current_streak')
-        .eq('user_id', effectiveUserId)
+        .eq('user_id', currentUserId)
         .maybeSingle();
 
       if (streakData) {
         setUserStreakCount(streakData.current_streak);
       }
+
+      setAmbientFriend(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error fetching daily goal';
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [effectiveUserId]);
-
-  const refreshGoal = useCallback(async () => {
-    if (isDemo) {
-      loadDemoGoalAndSolves();
-    } else {
-      await loadSupabaseGoalAndSolves();
-    }
-  }, [isDemo, loadDemoGoalAndSolves, loadSupabaseGoalAndSolves]);
+  }, [currentUserId]);
 
   useEffect(() => {
-    if (isDemo) {
-      loadDemoGoalAndSolves();
-      const unsubGoals = demoStore.subscribe('daily_goals', loadDemoGoalAndSolves);
-      const unsubAttempts = demoStore.subscribe('attempts', loadDemoGoalAndSolves);
-      const unsubStreaks = demoStore.subscribe('streaks', loadDemoGoalAndSolves);
-      return () => {
-        unsubGoals();
-        unsubAttempts();
-        unsubStreaks();
-      };
-    } else {
-      loadSupabaseGoalAndSolves();
+    loadSupabaseGoalAndSolves();
 
+    if (currentUserId) {
       const channel = supabase
-        .channel(`daily-goals-${effectiveUserId}`)
+        .channel(`daily-goals-${currentUserId}`)
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'daily_goals', filter: `user_id=eq.${effectiveUserId}` },
-          () => {
-            loadSupabaseGoalAndSolves();
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'attempts', filter: `user_id=eq.${effectiveUserId}` },
+          { event: '*', schema: 'public', table: 'daily_goals', filter: `user_id=eq.${currentUserId}` },
           () => {
             loadSupabaseGoalAndSolves();
           }
@@ -257,99 +193,94 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
         supabase.removeChannel(channel);
       };
     }
-  }, [isDemo, loadDemoGoalAndSolves, loadSupabaseGoalAndSolves, effectiveUserId]);
+  }, [currentUserId, loadSupabaseGoalAndSolves]);
 
-  // Compute Daily progress derived state
-  const progress: DailyGoalProgress = useMemo(() => {
-    const easyTarget = goal?.easy_target ?? 1;
-    const mediumTarget = goal?.medium_target ?? 1;
-    const hardTarget = goal?.hard_target ?? 0;
+  // Derived daily metrics
+  const progress = useMemo<DailyGoalProgress>(() => {
+    const easyT = goal?.easy_target ?? 1;
+    const medT = goal?.medium_target ?? 1;
+    const hardT = goal?.hard_target ?? 0;
 
-    let easySolved = 0;
-    let mediumSolved = 0;
-    let hardSolved = 0;
+    const easyS = solvedDifficulties.filter((d) => d === 'Easy').length;
+    const medS = solvedDifficulties.filter((d) => d === 'Medium').length;
+    const hardS = solvedDifficulties.filter((d) => d === 'Hard').length;
 
-    solvedDifficulties.forEach((diff) => {
-      if (diff === 'Easy') easySolved += 1;
-      else if (diff === 'Medium') mediumSolved += 1;
-      else if (diff === 'Hard') hardSolved += 1;
-    });
+    const totalT = easyT + medT + hardT;
+    const totalS = easyS + medS + hardS;
 
-    const totalSolved = easySolved + mediumSolved + hardSolved;
-    const totalTarget = easyTarget + mediumTarget + hardTarget;
-    const remainingCount = Math.max(0, totalTarget - totalSolved);
-    const rawPercentage = totalTarget > 0 ? (totalSolved / totalTarget) * 100 : 100;
-    const percentage = Math.min(100, Math.round(rawPercentage));
+    const easyMet = easyS >= easyT;
+    const medMet = medS >= medT;
+    const hardMet = hardS >= hardT;
+    const isComplete = easyMet && medMet && hardMet && totalT > 0;
 
-    const isComplete =
-      easySolved >= easyTarget &&
-      mediumSolved >= mediumTarget &&
-      hardSolved >= hardTarget;
+    const pct = totalT > 0 ? Math.min(100, Math.round((totalS / totalT) * 100)) : 0;
+    const remainingCount = Math.max(0, totalT - totalS);
 
     return {
-      easy_solved: easySolved,
-      medium_solved: mediumSolved,
-      hard_solved: hardSolved,
-      easy_target: easyTarget,
-      medium_target: mediumTarget,
-      hard_target: hardTarget,
-      total_solved: totalSolved,
-      total_target: totalTarget,
-      remaining_count: remainingCount,
-      percentage,
+      easy_target: easyT,
+      medium_target: medT,
+      hard_target: hardT,
+      total_target: totalT,
+      easy_solved: easyS,
+      medium_solved: medS,
+      hard_solved: hardS,
+      total_solved: totalS,
+      easy_met: easyMet,
+      medium_met: medMet,
+      hard_met: hardMet,
       is_complete: isComplete,
+      percentage: pct,
+      remaining_count: remainingCount,
     };
   }, [goal, solvedDifficulties]);
 
-  // Compute Weekly progress derived state with Endowed Progress from Streaks >= 3
-  const weeklyProgress: WeeklyGoalProgress = useMemo(() => {
-    const targetCount = goal?.weekly_target ?? 10;
-    // Endowed progress: +1 momentum credit if consistency streak >= 3 days
-    const endowedCount = userStreakCount >= 3 ? 1 : 0;
-    const effectiveSolved = weeklySolvesCount + endowedCount;
-    const remainingCount = Math.max(0, targetCount - effectiveSolved);
-
+  // Derived weekly stretch metrics
+  const weeklyProgress = useMemo<WeeklyGoalProgress>(() => {
+    const weeklyTarget = goal?.weekly_target ?? 10;
     const now = new Date();
     const dayOfWeek = now.getDay();
-    const diffToMonday = (dayOfWeek + 6) % 7;
-    const daysRemaining = Math.max(1, 7 - diffToMonday);
+    const daysLeft = (7 - (dayOfWeek === 0 ? 7 : dayOfWeek) + 1) % 7;
 
-    const rawPercentage = targetCount > 0 ? (effectiveSolved / targetCount) * 100 : 100;
-    const percentage = Math.min(100, Math.round(rawPercentage));
-    const isComplete = effectiveSolved >= targetCount;
+    const hasEndowedMomentum = userStreakCount >= 3;
+    const endowedCredit = hasEndowedMomentum ? 1 : 0;
+    const effectiveWeeklySolved = weeklySolvesCount + endowedCredit;
+
+    const remainingCount = Math.max(0, weeklyTarget - effectiveWeeklySolved);
+    const isComplete = effectiveWeeklySolved >= weeklyTarget && weeklyTarget > 0;
+    const pct = weeklyTarget > 0 ? Math.min(100, Math.round((effectiveWeeklySolved / weeklyTarget) * 100)) : 0;
 
     return {
       total_solved: weeklySolvesCount,
-      target_count: targetCount,
-      endowed_count: endowedCount,
-      effective_solved: effectiveSolved,
+      target_count: weeklyTarget,
+      endowed_count: endowedCredit,
+      effective_solved: effectiveWeeklySolved,
       remaining_count: remainingCount,
-      days_remaining: daysRemaining,
-      percentage,
+      days_remaining: daysLeft,
+      percentage: pct,
       is_complete: isComplete,
     };
   }, [goal, weeklySolvesCount, userStreakCount]);
 
-  // Compute Dual Goal Progress
-  const dualProgress: DualGoalProgress = useMemo(() => {
-    const cadence = goal?.cadence || 'both';
+  // Dual goal synthesis
+  const dualProgress = useMemo<DualGoalProgress>(() => {
     return {
-      cadence,
+      cadence: goal?.cadence ?? 'both',
       daily: progress,
       weekly: weeklyProgress,
-      is_daily_active: cadence === 'daily' || cadence === 'both',
-      is_weekly_active: cadence === 'weekly' || cadence === 'both',
+      is_daily_active: goal?.cadence === 'daily' || goal?.cadence === 'both',
+      is_weekly_active: goal?.cadence === 'weekly' || goal?.cadence === 'both',
     };
   }, [goal, progress, weeklyProgress]);
 
-  const isGoalMet = useMemo(() => {
-    const cadence = goal?.cadence || 'both';
-    if (cadence === 'daily') return progress.is_complete;
-    if (cadence === 'weekly') return weeklyProgress.is_complete;
-    return progress.is_complete || weeklyProgress.is_complete;
+  const isGoalMet = useMemo<boolean>(() => {
+    const c = goal?.cadence ?? 'both';
+    if (c === 'daily') return progress.is_complete;
+    if (c === 'weekly') return weeklyProgress.is_complete;
+    return progress.is_complete && weeklyProgress.is_complete;
   }, [goal, progress, weeklyProgress]);
 
   const setPreset = async (preset: GoalPresetType) => {
+    if (!currentUserId) return;
     const config = GOAL_PRESETS.find((p) => p.preset === preset);
     if (!config && preset !== 'Custom') return;
 
@@ -359,27 +290,13 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
     const cadence = goal?.cadence || 'both';
     const weeklyTarget = goal?.weekly_target || 10;
 
-    if (isDemo) {
-      const updated = demoStore.setDailyGoal(
-        effectiveUserId,
-        preset,
-        easy,
-        medium,
-        hard,
-        cadence,
-        weeklyTarget
-      );
-      setGoal(updated);
-      return;
-    }
-
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       const { data, error: upsertErr } = await supabase
         .from('daily_goals')
         .upsert(
           {
-            user_id: effectiveUserId,
+            user_id: currentUserId,
             preset,
             cadence,
             easy_target: easy,
@@ -403,25 +320,12 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
   };
 
   const setCadence = async (cadence: GoalCadence) => {
+    if (!currentUserId) return;
     const easy = goal?.easy_target ?? 1;
     const medium = goal?.medium_target ?? 1;
     const hard = goal?.hard_target ?? 0;
     const weeklyTarget = goal?.weekly_target ?? 10;
     const preset = goal?.preset ?? 'Standard';
-
-    if (isDemo) {
-      const updated = demoStore.setDailyGoal(
-        effectiveUserId,
-        preset,
-        easy,
-        medium,
-        hard,
-        cadence,
-        weeklyTarget
-      );
-      setGoal(updated);
-      return;
-    }
 
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -429,7 +333,7 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
         .from('daily_goals')
         .upsert(
           {
-            user_id: effectiveUserId,
+            user_id: currentUserId,
             preset,
             cadence,
             easy_target: easy,
@@ -452,27 +356,14 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
     }
   };
 
-  const setWeeklyTarget = async (weeklyTarget: number) => {
-    const safeTarget = Math.max(1, Math.min(50, Math.floor(weeklyTarget)));
+  const setWeeklyTarget = async (target: number) => {
+    if (!currentUserId) return;
+    const safeTarget = Math.max(1, target);
     const easy = goal?.easy_target ?? 1;
     const medium = goal?.medium_target ?? 1;
     const hard = goal?.hard_target ?? 0;
     const cadence = goal?.cadence ?? 'both';
     const preset = goal?.preset ?? 'Standard';
-
-    if (isDemo) {
-      const updated = demoStore.setDailyGoal(
-        effectiveUserId,
-        preset,
-        easy,
-        medium,
-        hard,
-        cadence,
-        safeTarget
-      );
-      setGoal(updated);
-      return;
-    }
 
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -480,7 +371,7 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
         .from('daily_goals')
         .upsert(
           {
-            user_id: effectiveUserId,
+            user_id: currentUserId,
             preset,
             cadence,
             easy_target: easy,
@@ -507,27 +398,14 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
     easy: number,
     medium: number,
     hard: number,
-    weeklyTarget: number = goal?.weekly_target ?? 10,
-    cadence: GoalCadence = goal?.cadence ?? 'both'
+    weeklyTarget: number = 10,
+    cadence: GoalCadence = 'both'
   ) => {
-    const safeEasy = Math.max(0, Math.floor(easy));
-    const safeMedium = Math.max(0, Math.floor(medium));
-    const safeHard = Math.max(0, Math.floor(hard));
-    const safeWeekly = Math.max(1, Math.floor(weeklyTarget));
-
-    if (isDemo) {
-      const updated = demoStore.setDailyGoal(
-        effectiveUserId,
-        'Custom',
-        safeEasy,
-        safeMedium,
-        safeHard,
-        cadence,
-        safeWeekly
-      );
-      setGoal(updated);
-      return;
-    }
+    if (!currentUserId) return;
+    const safeEasy = Math.max(0, easy);
+    const safeMedium = Math.max(0, medium);
+    const safeHard = Math.max(0, hard);
+    const safeWeekly = Math.max(1, weeklyTarget);
 
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -535,7 +413,7 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
         .from('daily_goals')
         .upsert(
           {
-            user_id: effectiveUserId,
+            user_id: currentUserId,
             preset: 'Custom',
             cadence,
             easy_target: safeEasy,
@@ -573,6 +451,8 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
     setCadence,
     setWeeklyTarget,
     updateCustomGoal,
-    refreshGoal,
+    refreshGoal: loadSupabaseGoalAndSolves,
   };
 }
+
+export default useDailyGoal;

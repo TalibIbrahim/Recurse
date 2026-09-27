@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '../lib/supabase';
 import { FriendPoke } from '../data/types';
-import {
-  demoStore,
-  DEMO_USER_ID,
-  isDemoModeActive,
-  isSupabaseConfigured,
-  supabase,
-} from '../lib/supabase';
 
 export interface UsePokesReturn {
   readonly pokes: readonly FriendPoke[];
@@ -21,31 +15,18 @@ export interface UsePokesReturn {
   readonly refreshPokes: () => Promise<void>;
 }
 
-/**
- * Hook to manage peer nudges and pokes,
- * enforcing a 24-hour rate limit per friend to foster healthy accountability.
- */
 export function usePokes(currentUserId?: string): UsePokesReturn {
   const [pokes, setPokes] = useState<readonly FriendPoke[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveUserId = currentUserId || DEMO_USER_ID;
-  const isDemo = isDemoModeActive() || !isSupabaseConfigured;
-
-  const loadDemoPokes = useCallback(() => {
-    try {
-      const items = demoStore.getPokes(effectiveUserId);
-      setPokes(items);
-      setLoading(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load demo pokes';
-      setError(msg);
-      setLoading(false);
-    }
-  }, [effectiveUserId]);
-
   const loadSupabasePokes = useCallback(async () => {
+    if (!currentUserId) {
+      setPokes([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -56,42 +37,24 @@ export function usePokes(currentUserId?: string): UsePokesReturn {
           sender:profiles!friend_pokes_sender_id_fkey(*),
           receiver:profiles!friend_pokes_receiver_id_fkey(*)
         `)
-        .or(`sender_id.eq.${effectiveUserId},receiver_id.eq.${effectiveUserId}`)
+        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
         .order('poked_at', { ascending: false });
 
-      if (fetchErr) {
-        // Fallback to demo store if table does not exist yet
-        loadDemoPokes();
-        return;
-      }
+      if (fetchErr) throw fetchErr;
 
       setPokes((data as FriendPoke[]) || []);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error fetching pokes';
-      setError(msg);
-      loadDemoPokes();
+    } catch {
+      setPokes([]);
     } finally {
       setLoading(false);
     }
-  }, [effectiveUserId, loadDemoPokes]);
-
-  const refreshPokes = useCallback(async () => {
-    if (isDemo) {
-      loadDemoPokes();
-    } else {
-      await loadSupabasePokes();
-    }
-  }, [isDemo, loadDemoPokes, loadSupabasePokes]);
+  }, [currentUserId]);
 
   useEffect(() => {
-    if (isDemo) {
-      loadDemoPokes();
-      const unsub = demoStore.subscribe('pokes', loadDemoPokes);
-      return unsub;
-    } else {
-      loadSupabasePokes();
+    loadSupabasePokes();
+    if (currentUserId) {
       const channel = supabase
-        .channel(`pokes-${effectiveUserId}`)
+        .channel(`pokes-${currentUserId}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'friend_pokes' },
@@ -105,46 +68,45 @@ export function usePokes(currentUserId?: string): UsePokesReturn {
         supabase.removeChannel(channel);
       };
     }
-  }, [isDemo, loadDemoPokes, loadSupabasePokes, effectiveUserId]);
+  }, [loadSupabasePokes, currentUserId]);
 
   const canPokeToday = useCallback(
     (friendId: string): boolean => {
-      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-      const lastPoke = pokes.find(
+      if (!currentUserId) return false;
+      const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const existing = pokes.find(
         (p) =>
-          p.sender_id === effectiveUserId &&
+          p.sender_id === currentUserId &&
           p.receiver_id === friendId &&
-          new Date(p.poked_at).getTime() > oneDayAgo
+          new Date(p.poked_at).getTime() > twentyFourHoursAgo
       );
-      return !lastPoke;
+      return !existing;
     },
-    [pokes, effectiveUserId]
+    [pokes, currentUserId]
   );
 
   const pokeFriend = async (
     friendId: string,
-    message: string = 'Sent you a practice reminder!'
+    message: string = 'Friendly nudge: Keep your streak alive today!'
   ): Promise<{ success: boolean; poke?: FriendPoke; error?: string }> => {
+    if (!currentUserId) {
+      return { success: false, error: 'User is not logged in' };
+    }
+
     if (!canPokeToday(friendId)) {
       return {
         success: false,
-        error: 'You can only nudge this peer once every 24 hours.',
+        error: 'You have already poked this friend in the last 24 hours.',
       };
-    }
-
-    if (isDemo) {
-      const result = demoStore.pokeFriend(effectiveUserId, friendId, message);
-      return result;
     }
 
     try {
       const { data, error: insertErr } = await supabase
         .from('friend_pokes')
         .insert({
-          sender_id: effectiveUserId,
+          sender_id: currentUserId,
           receiver_id: friendId,
-          message: message.trim(),
-          poked_at: new Date().toISOString(),
+          message,
         })
         .select(`
           *,
@@ -154,7 +116,7 @@ export function usePokes(currentUserId?: string): UsePokesReturn {
         .single();
 
       if (insertErr) throw insertErr;
-      await refreshPokes();
+      await loadSupabasePokes();
       return { success: true, poke: data as FriendPoke };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to send poke';
@@ -162,10 +124,10 @@ export function usePokes(currentUserId?: string): UsePokesReturn {
     }
   };
 
-  // Nudges sent to the current user
-  const recentPokes = useMemo<readonly FriendPoke[]>(() => {
-    return pokes.filter((p) => p.receiver_id === effectiveUserId);
-  }, [pokes, effectiveUserId]);
+  const recentPokes = useMemo(() => {
+    if (!currentUserId) return [];
+    return pokes.filter((p) => p.receiver_id === currentUserId);
+  }, [pokes, currentUserId]);
 
   return {
     pokes,
@@ -174,6 +136,8 @@ export function usePokes(currentUserId?: string): UsePokesReturn {
     error,
     pokeFriend,
     canPokeToday,
-    refreshPokes,
+    refreshPokes: loadSupabasePokes,
   };
 }
+
+export default usePokes;

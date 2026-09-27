@@ -1,20 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  supabase,
-  isSupabaseConfigured,
-  isDemoModeActive,
-  demoStore,
-  DEMO_USER_ID,
-} from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Attempt, LogAttemptInput } from '../data/types';
-import { SEED_PROBLEMS } from '../data/problemsSeed';
 
 export interface UseAttemptsReturn {
   readonly attempts: readonly Attempt[];
   readonly friendAttempts: readonly Attempt[];
   readonly loading: boolean;
   readonly error: string | null;
-  readonly logAttempt: (input: LogAttemptInput) => Promise<{ success: boolean; attempt?: Attempt; error?: string }>;
+  readonly logAttempt: (
+    input: LogAttemptInput
+  ) => Promise<{ success: boolean; attempt?: Attempt; error?: string }>;
   readonly updateAttempt: (
     attemptId: string,
     updates: Partial<LogAttemptInput>
@@ -30,24 +25,14 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveUserId = currentUserId || DEMO_USER_ID;
-  const isDemo = isDemoModeActive() || !isSupabaseConfigured;
-
-  const loadDemoAttempts = useCallback(() => {
-    try {
-      const own = demoStore.getAttempts(effectiveUserId);
-      const friends = demoStore.getFriendAttempts(effectiveUserId);
-      setAttempts(own);
-      setFriendAttempts(friends);
-      setLoading(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load demo attempts';
-      setError(msg);
-      setLoading(false);
-    }
-  }, [effectiveUserId]);
-
   const loadSupabaseAttempts = useCallback(async () => {
+    if (!currentUserId) {
+      setAttempts([]);
+      setFriendAttempts([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -60,7 +45,7 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
           problem:problems(*),
           user:profiles(*)
         `)
-        .eq('user_id', effectiveUserId)
+        .eq('user_id', currentUserId)
         .order('solved_at', { ascending: false });
 
       if (ownErr) throw ownErr;
@@ -73,7 +58,7 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
           problem:problems(*),
           user:profiles(*)
         `)
-        .neq('user_id', effectiveUserId)
+        .neq('user_id', currentUserId)
         .order('solved_at', { ascending: false })
         .limit(30);
 
@@ -87,26 +72,14 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     } finally {
       setLoading(false);
     }
-  }, [effectiveUserId]);
-
-  const refreshAttempts = useCallback(async () => {
-    if (isDemo) {
-      loadDemoAttempts();
-    } else {
-      await loadSupabaseAttempts();
-    }
-  }, [isDemo, loadDemoAttempts, loadSupabaseAttempts]);
+  }, [currentUserId]);
 
   useEffect(() => {
-    if (isDemo) {
-      loadDemoAttempts();
-      const unsub = demoStore.subscribe('attempts', loadDemoAttempts);
-      return unsub;
-    } else {
-      loadSupabaseAttempts();
+    loadSupabaseAttempts();
 
+    if (currentUserId) {
       const channel = supabase
-        .channel(`attempts-stream-${effectiveUserId}`)
+        .channel(`attempts-stream-${currentUserId}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'attempts' },
@@ -120,31 +93,28 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
         supabase.removeChannel(channel);
       };
     }
-  }, [isDemo, loadDemoAttempts, loadSupabaseAttempts, effectiveUserId]);
+  }, [loadSupabaseAttempts, currentUserId]);
 
   const logAttempt = async (
     input: LogAttemptInput
   ): Promise<{ success: boolean; attempt?: Attempt; error?: string }> => {
-    if (isDemo) {
-      const newAtt = demoStore.addAttempt(effectiveUserId, input);
-      return { success: true, attempt: newAtt };
+    if (!currentUserId) {
+      return { success: false, error: 'User is not logged in' };
     }
 
     try {
       const { data, error: insertErr } = await supabase
         .from('attempts')
         .insert({
-          user_id: effectiveUserId,
+          user_id: currentUserId,
           problem_id: input.problem_id,
           status: input.status,
-          approach_notes: input.approach_notes || '',
-          pattern_tag: input.pattern_tag || null,
-          time_complexity: input.time_complexity || null,
-          space_complexity: input.space_complexity || null,
-          time_spent_min: input.time_spent_min ?? null,
-          submission_url: input.submission_url || null,
-          needs_revisit: input.needs_revisit ?? (input.status === 'needs_review'),
-          confidence_rating: input.confidence_rating ?? null,
+          confidence_rating: input.confidence_rating,
+          time_spent_min: input.time_spent_min,
+          approach_notes: input.approach_notes,
+          pattern_tag: input.pattern_tag,
+          time_complexity: input.time_complexity,
+          space_complexity: input.space_complexity,
           solved_at: new Date().toISOString(),
         })
         .select(`
@@ -156,10 +126,10 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
 
       if (insertErr) throw insertErr;
 
-      await refreshAttempts();
+      await loadSupabaseAttempts();
       return { success: true, attempt: data as Attempt };
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to record attempt';
+      const msg = err instanceof Error ? err.message : 'Failed to save attempt';
       return { success: false, error: msg };
     }
   };
@@ -168,23 +138,15 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     attemptId: string,
     updates: Partial<LogAttemptInput>
   ): Promise<{ success: boolean; error?: string }> => {
-    if (isDemo) {
-      demoStore.updateAttempt(attemptId, updates);
-      return { success: true };
-    }
-
     try {
-      const { error: updateErr } = await supabase
+      const { error: updErr } = await supabase
         .from('attempts')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', attemptId)
-        .eq('user_id', effectiveUserId);
+        .update(updates)
+        .eq('id', attemptId);
 
-      if (updateErr) throw updateErr;
-      await refreshAttempts();
+      if (updErr) throw updErr;
+
+      await loadSupabaseAttempts();
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update attempt';
@@ -192,21 +154,18 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     }
   };
 
-  const deleteAttempt = async (attemptId: string): Promise<{ success: boolean; error?: string }> => {
-    if (isDemo) {
-      demoStore.deleteAttempt(attemptId);
-      return { success: true };
-    }
-
+  const deleteAttempt = async (
+    attemptId: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error: delErr } = await supabase
         .from('attempts')
         .delete()
-        .eq('id', attemptId)
-        .eq('user_id', effectiveUserId);
+        .eq('id', attemptId);
 
       if (delErr) throw delErr;
-      await refreshAttempts();
+
+      await loadSupabaseAttempts();
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete attempt';
@@ -214,9 +173,12 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     }
   };
 
-  const getAttemptForProblem = (problemId: string): Attempt | undefined => {
-    return attempts.find((a) => a.problem_id === problemId || a.problem?.id === problemId);
-  };
+  const getAttemptForProblem = useCallback(
+    (problemId: string): Attempt | undefined => {
+      return attempts.find((a) => a.problem_id === problemId);
+    },
+    [attempts]
+  );
 
   return {
     attempts,
@@ -227,6 +189,8 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     updateAttempt,
     deleteAttempt,
     getAttemptForProblem,
-    refreshAttempts,
+    refreshAttempts: loadSupabaseAttempts,
   };
 }
+
+export default useAttempts;

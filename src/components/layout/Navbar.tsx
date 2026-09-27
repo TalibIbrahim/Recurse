@@ -3,9 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Code,
   Flame,
-  Calendar,
   BookOpen,
   Users,
   Trophy,
@@ -13,7 +11,6 @@ import {
   ChevronDown,
   LogOut,
   User,
-  Check,
   Menu,
   X,
   Sparkles,
@@ -23,7 +20,6 @@ import {
 } from 'lucide-react';
 import styles from './Navbar.module.css';
 import { Profile } from '../../data/types';
-import { demoStore, DEMO_USER_ID, FRIEND_SARAH_ID, STRANGER_MARCUS_ID } from '../../lib/supabase';
 import { RecurseLogo } from '../ui/RecurseLogo';
 
 export type NavTabId = 'today' | 'problems' | 'friends' | 'leaderboard' | 'activity';
@@ -33,7 +29,6 @@ export interface NavbarProps {
   onTabChange: (tab: NavTabId) => void;
   streakCount: number;
   currentProfile: Profile | null;
-  isDemo: boolean;
   onOpenAuthModal: () => void;
   onSignOut: () => void;
   onOpenRecap?: () => void;
@@ -43,40 +38,11 @@ export interface NavbarProps {
   activeDuelsCount?: number;
 }
 
-interface DemoUserOption {
-  id: string;
-  name: string;
-  role: string;
-  avatar: string;
-}
-
-const DEMO_OPTIONS: readonly DemoUserOption[] = [
-  {
-    id: DEMO_USER_ID,
-    name: 'Alex Chen',
-    role: 'Consistent Grinder · 14d streak',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-  },
-  {
-    id: FRIEND_SARAH_ID,
-    name: 'Sarah Lin',
-    role: 'DP Specialist · 18d streak',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-  },
-  {
-    id: STRANGER_MARCUS_ID,
-    name: 'Marcus Vance',
-    role: 'Weekend Warrior · Blind 75',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-  },
-];
-
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
   streakCount,
   currentProfile,
-  isDemo,
   onOpenAuthModal,
   onSignOut,
   onOpenRecap,
@@ -99,11 +65,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleSelectDemoUser = (userId: string) => {
-    demoStore.setCurrentUserId(userId);
-    setDropdownOpen(false);
-  };
 
   const navItems: { id: NavTabId; label: string; icon: React.ReactNode }[] = [
     { id: 'today', label: 'Today', icon: <Sparkles size={16} /> },
@@ -153,48 +114,51 @@ export const Navbar: React.FC<NavbarProps> = ({
           })}
         </nav>
 
-        {/* Action Group */}
-        <div className={styles.actionGroup}>
-          {/* Quick Feature Action Buttons: Recap, Duel, Share, Extension */}
-          {onOpenRecap && (
-            <button
-              type="button"
-              className={styles.headerActionBtn}
-              onClick={onOpenRecap}
-              title="Open Weekly Performance Recap"
-            >
-              <Sparkles size={14} className="text-accent-blue" />
-              <span>Recap</span>
-            </button>
-          )}
-
+        {/* Right Action Icons & User Account */}
+        <div className={styles.rightActions}>
+          {/* Quick Duel Button */}
           {onOpenDuel && (
             <button
               type="button"
               className={styles.headerActionBtn}
               onClick={onOpenDuel}
-              title="1v1 Problem Duels"
+              title="1v1 Algorithmic Duel"
             >
-              <Swords size={14} className="text-accent-orange" />
+              <Swords size={15} className="text-accent-purple" />
               <span>Duel</span>
               {activeDuelsCount > 0 && (
-                <span className={styles.duelBadge}>{activeDuelsCount}</span>
+                <span className={styles.badgeCount}>{activeDuelsCount}</span>
               )}
             </button>
           )}
 
+          {/* Weekly Recap Button */}
+          {onOpenRecap && (
+            <button
+              type="button"
+              className={styles.headerActionBtn}
+              onClick={onOpenRecap}
+              title="Weekly Performance Recap"
+            >
+              <BarChart3 size={14} className="text-accent-green" />
+              <span>Recap</span>
+            </button>
+          )}
+
+          {/* Share Stat Card Button */}
           {onOpenShareCard && (
             <button
               type="button"
               className={styles.headerActionBtn}
               onClick={onOpenShareCard}
-              title="Export Dev Stat Card"
+              title="Share Developer Stat Card"
             >
-              <Share2 size={14} className="text-accent-purple" />
-              <span>Share Card</span>
+              <Share2 size={14} className="text-accent-orange" />
+              <span>Card</span>
             </button>
           )}
 
+          {/* Extension Integration Button */}
           {onOpenExtensionGuide && (
             <button
               type="button"
@@ -213,14 +177,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>{streakCount}d</span>
           </div>
 
-          {/* Quick Demo Switcher / User Profile Dropdown */}
+          {/* User Profile Dropdown */}
           <div className={styles.userSwitcherWrapper} ref={dropdownRef}>
             <button
               type="button"
               className={styles.switcherTrigger}
               onClick={() => setDropdownOpen((prev) => !prev)}
               aria-expanded={dropdownOpen}
-              aria-label="User account and persona selector"
+              aria-label="User account"
             >
               <img
                 src={
@@ -232,7 +196,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               />
               <div className="hidden sm:flex flex-col text-left">
                 <span className="font-semibold text-xs text-label-primary leading-tight">
-                  {currentProfile?.full_name?.split(' ')[0] || 'Demo'}
+                  {currentProfile?.full_name?.split(' ')[0] || currentProfile?.username || 'Account'}
                 </span>
                 {currentProfile?.identity_label && (
                   <span className="text-[10px] font-medium text-accent-blue leading-none">
@@ -252,45 +216,62 @@ export const Navbar: React.FC<NavbarProps> = ({
                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
                   transition={{ type: 'spring', stiffness: 450, damping: 28 }}
                 >
-                  <div className={styles.dropdownHeader}>Switch Persona (Live Demo)</div>
-
-                  {DEMO_OPTIONS.map((demo) => {
-                    const isSelected = currentProfile?.id === demo.id;
-                    return (
-                      <button
-                        key={demo.id}
-                        type="button"
-                        className={`${styles.dropdownItem} ${
-                          isSelected ? styles.dropdownItemActive : ''
-                        }`}
-                        onClick={() => handleSelectDemoUser(demo.id)}
-                      >
-                        <div className={styles.userInfoRow}>
-                          <img src={demo.avatar} alt={demo.name} className={styles.avatarSmall} />
-                          <div className={styles.userMeta}>
-                            <span className={styles.userNameLabel}>{demo.name}</span>
-                            <span className={styles.userHandleLabel}>{demo.role}</span>
-                          </div>
-                        </div>
-                        {isSelected && <Check size={16} />}
-                      </button>
-                    );
-                  })}
-
-                  <div className={styles.divider} />
-
                   {currentProfile ? (
-                    <button
-                      type="button"
-                      className={styles.signOutButton}
-                      onClick={() => {
-                        setDropdownOpen(false);
-                        onSignOut();
-                      }}
-                    >
-                      <LogOut size={15} />
-                      <span>Sign Out</span>
-                    </button>
+                    <>
+                      <div className="px-4 py-3 border-b border-[rgba(255,255,255,0.08)]">
+                        <div className="font-semibold text-sm text-[#F4F4F5]">
+                          {currentProfile.full_name || currentProfile.username}
+                        </div>
+                        <div className="text-xs text-[#71717A] truncate">
+                          @{currentProfile.username}
+                        </div>
+                        {currentProfile.identity_label && (
+                          <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(10,132,255,0.12)] text-[#0A84FF] border border-[rgba(10,132,255,0.2)]">
+                            {currentProfile.identity_label.title}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-1">
+                        <button
+                          type="button"
+                          className={styles.dropdownItem}
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            onTabChange('activity');
+                          }}
+                        >
+                          <BarChart3 size={15} />
+                          <span>My Stats &amp; Heatmap</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={styles.dropdownItem}
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            onTabChange('friends');
+                          }}
+                        >
+                          <Users size={15} />
+                          <span>My Peer Pod</span>
+                        </button>
+                      </div>
+
+                      <div className={styles.divider} />
+
+                      <button
+                        type="button"
+                        className={styles.signOutButton}
+                        onClick={() => {
+                          setDropdownOpen(false);
+                          onSignOut();
+                        }}
+                      >
+                        <LogOut size={15} />
+                        <span>Sign Out</span>
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"

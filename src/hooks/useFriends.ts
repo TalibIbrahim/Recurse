@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  supabase,
-  isSupabaseConfigured,
-  isDemoModeActive,
-  demoStore,
-  DEMO_USER_ID,
-} from '../lib/supabase';
-import { Friendship, FriendWithStatus, Profile } from '../data/types';
+import { supabase } from '../lib/supabase';
+import { FriendWithStatus, Friendship, Profile } from '../data/types';
 
 export interface UseFriendsReturn {
   readonly friends: readonly FriendWithStatus[];
@@ -31,60 +25,15 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveUserId = currentUserId || DEMO_USER_ID;
-  const isDemo = isDemoModeActive() || !isSupabaseConfigured;
-
-  const loadDemoFriends = useCallback(() => {
-    try {
-      const allFriendships = demoStore.getFriendships(effectiveUserId);
-      const todayStr = new Date().toISOString().split('T')[0];
-
-      const acceptedList: FriendWithStatus[] = [];
-      const pendingIncoming: Friendship[] = [];
-      const pendingOutgoing: Friendship[] = [];
-
-      allFriendships.forEach((f) => {
-        if (!f.friend_profile) return;
-
-        if (f.status === 'accepted') {
-          const friendId = f.friend_profile.id;
-          const friendAttempts = demoStore.getAttempts(friendId);
-          const solvedToday = friendAttempts.filter(
-            (a) => a.status === 'solved' && a.solved_at.startsWith(todayStr)
-          ).length;
-          const streak = demoStore.getStreak(friendId);
-
-          acceptedList.push({
-            friendship_id: f.id,
-            status: 'accepted',
-            profile: f.friend_profile,
-            is_online: f.friend_profile.is_online,
-            last_seen_at: f.friend_profile.last_seen_at,
-            solved_today_count: solvedToday,
-            current_streak: streak.current_streak,
-            weekly_points: solvedToday * 3 + streak.current_streak * 2,
-          });
-        } else if (f.status === 'pending') {
-          if (f.addressee_id === effectiveUserId) {
-            pendingIncoming.push(f);
-          } else {
-            pendingOutgoing.push(f);
-          }
-        }
-      });
-
-      setFriends(acceptedList);
-      setPendingRequests(pendingIncoming);
-      setSentRequests(pendingOutgoing);
-      setLoading(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load friends';
-      setError(msg);
-      setLoading(false);
-    }
-  }, [effectiveUserId]);
-
   const loadSupabaseFriends = useCallback(async () => {
+    if (!currentUserId) {
+      setFriends([]);
+      setPendingRequests([]);
+      setSentRequests([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -102,7 +51,7 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
           requester:profiles!requester_id(*),
           addressee:profiles!addressee_id(*)
         `)
-        .or(`requester_id.eq.${effectiveUserId},addressee_id.eq.${effectiveUserId}`);
+        .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
 
       if (fsError) throw fsError;
 
@@ -122,11 +71,11 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
           requester: Profile;
           addressee: Profile;
         }[]) {
-          const isRequester = row.requester_id === effectiveUserId;
+          const isRequester = row.requester_id === currentUserId;
           const otherProfile = isRequester ? row.addressee : row.requester;
+          if (!otherProfile) continue;
 
           if (row.status === 'accepted') {
-            // Fetch friend's streak and today's solves
             const { data: streakData } = await supabase
               .from('streaks')
               .select('current_streak')
@@ -161,7 +110,7 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
               friend_profile: otherProfile,
             };
 
-            if (row.addressee_id === effectiveUserId) {
+            if (row.addressee_id === currentUserId) {
               pendingIn.push(friendshipObj);
             } else {
               pendingOut.push(friendshipObj);
@@ -179,29 +128,14 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
     } finally {
       setLoading(false);
     }
-  }, [effectiveUserId]);
-
-  const refreshFriends = useCallback(async () => {
-    if (isDemo) {
-      loadDemoFriends();
-    } else {
-      await loadSupabaseFriends();
-    }
-  }, [isDemo, loadDemoFriends, loadSupabaseFriends]);
+  }, [currentUserId]);
 
   useEffect(() => {
-    if (isDemo) {
-      loadDemoFriends();
-      const unsub = demoStore.subscribe('friendships', () => {
-        loadDemoFriends();
-      });
-      return unsub;
-    } else {
-      loadSupabaseFriends();
+    loadSupabaseFriends();
 
-      // Realtime subscription for friendships
+    if (currentUserId) {
       const channel = supabase
-        .channel(`friendships-${effectiveUserId}`)
+        .channel(`friendships-${currentUserId}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'friendships' },
@@ -215,21 +149,16 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
         supabase.removeChannel(channel);
       };
     }
-  }, [isDemo, loadDemoFriends, loadSupabaseFriends, effectiveUserId]);
+  }, [currentUserId, loadSupabaseFriends]);
 
   const searchUsers = async (query: string): Promise<Profile[]> => {
     if (!query.trim()) return [];
-
-    if (isDemo) {
-      return demoStore.searchProfiles(query);
-    }
-
     try {
       const { data, error: searchErr } = await supabase
         .from('profiles')
         .select('*')
-        .neq('id', effectiveUserId)
-        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%,leetcode_username.ilike.%${query}%`)
+        .neq('id', currentUserId || '')
+        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
         .limit(10);
 
       if (searchErr) throw searchErr;
@@ -240,28 +169,25 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
     }
   };
 
-  const sendFriendRequest = async (targetUserId: string): Promise<{ success: boolean; error?: string }> => {
-    if (targetUserId === effectiveUserId) {
-      return { success: false, error: 'Cannot add yourself as a friend' };
-    }
-
-    if (isDemo) {
-      demoStore.sendFriendRequest(effectiveUserId, targetUserId);
-      return { success: true };
+  const sendFriendRequest = async (
+    targetUserId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUserId) {
+      return { success: false, error: 'User is not logged in' };
     }
 
     try {
       const { error: insertErr } = await supabase.from('friendships').insert({
-        requester_id: effectiveUserId,
+        requester_id: currentUserId,
         addressee_id: targetUserId,
         status: 'pending',
       });
 
       if (insertErr) throw insertErr;
-      await refreshFriends();
+      await loadSupabaseFriends();
       return { success: true };
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send friend request';
+      const msg = err instanceof Error ? err.message : 'Failed to send request';
       return { success: false, error: msg };
     }
   };
@@ -270,41 +196,42 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
     friendshipId: string,
     action: 'accept' | 'reject'
   ): Promise<{ success: boolean; error?: string }> => {
-    if (isDemo) {
-      demoStore.respondToFriendRequest(friendshipId, action === 'accept' ? 'accepted' : 'rejected');
-      return { success: true };
-    }
-
     try {
-      if (action === 'reject') {
-        const { error: delErr } = await supabase.from('friendships').delete().eq('id', friendshipId);
-        if (delErr) throw delErr;
-      } else {
+      if (action === 'accept') {
         const { error: updateErr } = await supabase
           .from('friendships')
-          .update({ status: 'accepted' })
+          .update({ status: 'accepted', updated_at: new Date().toISOString() })
           .eq('id', friendshipId);
+
         if (updateErr) throw updateErr;
+      } else {
+        const { error: delErr } = await supabase
+          .from('friendships')
+          .delete()
+          .eq('id', friendshipId);
+
+        if (delErr) throw delErr;
       }
 
-      await refreshFriends();
+      await loadSupabaseFriends();
       return { success: true };
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : `Failed to ${action} friend request`;
+      const msg = err instanceof Error ? err.message : 'Failed to update request';
       return { success: false, error: msg };
     }
   };
 
-  const removeFriend = async (friendshipId: string): Promise<{ success: boolean; error?: string }> => {
-    if (isDemo) {
-      demoStore.removeFriend(friendshipId);
-      return { success: true };
-    }
-
+  const removeFriend = async (
+    friendshipId: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { error: delErr } = await supabase.from('friendships').delete().eq('id', friendshipId);
+      const { error: delErr } = await supabase
+        .from('friendships')
+        .delete()
+        .eq('id', friendshipId);
+
       if (delErr) throw delErr;
-      await refreshFriends();
+      await loadSupabaseFriends();
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to remove friend';
@@ -322,6 +249,8 @@ export function useFriends(currentUserId?: string): UseFriendsReturn {
     sendFriendRequest,
     respondToRequest,
     removeFriend,
-    refreshFriends,
+    refreshFriends: loadSupabaseFriends,
   };
 }
+
+export default useFriends;

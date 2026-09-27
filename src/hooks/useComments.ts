@@ -1,11 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  supabase,
-  isSupabaseConfigured,
-  isDemoModeActive,
-  demoStore,
-  DEMO_USER_ID,
-} from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { ProblemComment } from '../data/types';
 
 export interface UseCommentsReturn {
@@ -25,41 +19,27 @@ export function useComments(attemptId?: string, currentUserId?: string): UseComm
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveUserId = currentUserId || DEMO_USER_ID;
-  const isDemo = isDemoModeActive() || !isSupabaseConfigured;
-
-  const loadDemoComments = useCallback(() => {
-    try {
-      const data = demoStore.getComments(attemptId);
-      setComments(data);
-      setLoading(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load comments';
-      setError(msg);
-      setLoading(false);
-    }
-  }, [attemptId]);
-
   const loadSupabaseComments = useCallback(async () => {
+    if (!attemptId) {
+      setComments([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      let query = supabase
+      const { data, error: commErr } = await supabase
         .from('problem_comments')
         .select(`
           *,
           author:profiles(*)
         `)
+        .eq('attempt_id', attemptId)
         .order('created_at', { ascending: true });
 
-      if (attemptId) {
-        query = query.eq('attempt_id', attemptId);
-      }
-
-      const { data, error: commErr } = await query;
       if (commErr) throw commErr;
-
       setComments((data as ProblemComment[]) || []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error fetching comments';
@@ -69,32 +49,15 @@ export function useComments(attemptId?: string, currentUserId?: string): UseComm
     }
   }, [attemptId]);
 
-  const refreshComments = useCallback(async () => {
-    if (isDemo) {
-      loadDemoComments();
-    } else {
-      await loadSupabaseComments();
-    }
-  }, [isDemo, loadDemoComments, loadSupabaseComments]);
-
   useEffect(() => {
-    if (isDemo) {
-      loadDemoComments();
-      const unsub = demoStore.subscribe('comments', loadDemoComments);
-      return unsub;
-    } else {
-      loadSupabaseComments();
+    loadSupabaseComments();
 
+    if (attemptId) {
       const channel = supabase
-        .channel(`comments-${attemptId || 'all'}`)
+        .channel(`comments-${attemptId}`)
         .on(
           'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'problem_comments',
-            ...(attemptId ? { filter: `attempt_id=eq.${attemptId}` } : {}),
-          },
+          { event: '*', schema: 'public', table: 'problem_comments', filter: `attempt_id=eq.${attemptId}` },
           () => {
             loadSupabaseComments();
           }
@@ -105,7 +68,7 @@ export function useComments(attemptId?: string, currentUserId?: string): UseComm
         supabase.removeChannel(channel);
       };
     }
-  }, [isDemo, loadDemoComments, loadSupabaseComments, attemptId]);
+  }, [attemptId, loadSupabaseComments]);
 
   const addComment = async (
     body: string,
@@ -113,15 +76,13 @@ export function useComments(attemptId?: string, currentUserId?: string): UseComm
   ): Promise<{ success: boolean; comment?: ProblemComment; error?: string }> => {
     const activeAttemptId = targetAttemptId || attemptId;
     if (!activeAttemptId) {
-      return { success: false, error: 'No attempt ID specified for comment' };
+      return { success: false, error: 'No attempt selected' };
+    }
+    if (!currentUserId) {
+      return { success: false, error: 'User is not logged in' };
     }
     if (!body.trim()) {
       return { success: false, error: 'Comment body cannot be empty' };
-    }
-
-    if (isDemo) {
-      const newComment = demoStore.addComment(activeAttemptId, effectiveUserId, body);
-      return { success: true, comment: newComment };
     }
 
     try {
@@ -129,7 +90,7 @@ export function useComments(attemptId?: string, currentUserId?: string): UseComm
         .from('problem_comments')
         .insert({
           attempt_id: activeAttemptId,
-          author_id: effectiveUserId,
+          user_id: currentUserId,
           body: body.trim(),
         })
         .select(`
@@ -140,7 +101,7 @@ export function useComments(attemptId?: string, currentUserId?: string): UseComm
 
       if (insertErr) throw insertErr;
 
-      await refreshComments();
+      await loadSupabaseComments();
       return { success: true, comment: data as ProblemComment };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to post comment';
@@ -148,22 +109,17 @@ export function useComments(attemptId?: string, currentUserId?: string): UseComm
     }
   };
 
-  const deleteComment = async (commentId: string): Promise<{ success: boolean; error?: string }> => {
-    if (isDemo) {
-      demoStore.deleteComment(commentId);
-      return { success: true };
-    }
-
+  const deleteComment = async (
+    commentId: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error: delErr } = await supabase
         .from('problem_comments')
         .delete()
-        .eq('id', commentId)
-        .eq('author_id', effectiveUserId);
+        .eq('id', commentId);
 
       if (delErr) throw delErr;
-
-      await refreshComments();
+      await loadSupabaseComments();
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete comment';
@@ -177,6 +133,8 @@ export function useComments(attemptId?: string, currentUserId?: string): UseComm
     error,
     addComment,
     deleteComment,
-    refreshComments,
+    refreshComments: loadSupabaseComments,
   };
 }
+
+export default useComments;

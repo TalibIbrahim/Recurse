@@ -7,7 +7,6 @@ import {
   Target,
   Trophy,
   RotateCcw,
-  Sparkles,
 } from 'lucide-react';
 import styles from './App.module.css';
 
@@ -40,7 +39,7 @@ import NeedsRevisitSection from './components/revisit/NeedsRevisitSection';
 import DuelBanner from './components/duels/DuelBanner';
 import BadgesGrid from './components/badges/BadgesGrid';
 
-// Alfred's Hooks & Data
+// Hooks & Data
 import {
   useAuth,
   useDailyGoal,
@@ -64,13 +63,9 @@ export function App() {
   const {
     user,
     profile,
-    isDemo,
     loading: authLoading,
     signInWithEmail,
     signUpWithEmail,
-    signInAsDemoUser,
-    enterDemoMode,
-    exitDemoMode,
     signOut,
     updateProfile,
   } = useAuth();
@@ -166,15 +161,15 @@ export function App() {
     setToast({ message, type, visible: true });
   };
 
-  // Check if newly signed in non-demo user needs onboarding
+  // Check if newly signed in user needs onboarding
   useEffect(() => {
-    if (user && !isDemo) {
+    if (user) {
       const hasCompleted = localStorage.getItem('recurse_onboarding_completed');
       if (!hasCompleted && !profile?.identity_label) {
         setShowOnboarding(true);
       }
     }
-  }, [user, isDemo, profile?.identity_label]);
+  }, [user, profile?.identity_label]);
 
   const [logModalState, setLogModalState] = useState<{
     isOpen: boolean;
@@ -271,18 +266,14 @@ export function App() {
   const currentStreak = streak?.current_streak ?? 0;
   const userRank = leaderboard.find((u) => u.is_current_user)?.rank ?? 1;
 
-  // If user is neither logged in nor in demo mode, show Landing Page
-  if (!authLoading && !user && !isDemo) {
+  // Logged-out view: Landing Page
+  if (!authLoading && !user) {
     return (
       <>
         <LandingPage
           onOpenAuth={(mode) => {
             setAuthModalMode(mode);
             setAuthModalOpen(true);
-          }}
-          onExploreDemo={() => {
-            enterDemoMode();
-            showToast('Entered Demo Sandbox Mode', 'info');
           }}
         />
 
@@ -292,11 +283,6 @@ export function App() {
           onClose={() => setAuthModalOpen(false)}
           onSignInWithEmail={signInWithEmail}
           onSignUpWithEmail={signUpWithEmail}
-          onSignInAsDemo={() => {
-            enterDemoMode();
-            setAuthModalOpen(false);
-            showToast('Entered Demo Sandbox Mode', 'info');
-          }}
           onSuccess={handleAuthSuccess}
         />
 
@@ -310,45 +296,12 @@ export function App() {
     );
   }
 
+  // Logged-in view: User Dashboard
   return (
     <div className={styles.appRoot}>
       {/* Subtle Ambient Apple Blur Orbs */}
       <div className={styles.ambientOrbBlue} aria-hidden="true" />
       <div className={styles.ambientOrbPurple} aria-hidden="true" />
-
-      {/* Demo Sandbox Top Banner */}
-      {isDemo && (
-        <div className={styles.demoNoticeBar}>
-          <div className={styles.demoNoticeText}>
-            <Sparkles size={14} className="text-[#0A84FF]" />
-            <span>
-              <strong>Demo Sandbox Mode</strong> — Viewing simulated peer pod data. Changes persist locally.
-            </span>
-          </div>
-          <div className={styles.demoNoticeActions}>
-            <button
-              type="button"
-              className={styles.demoNoticeExitBtn}
-              onClick={() => {
-                exitDemoMode();
-                showToast('Exited demo mode', 'info');
-              }}
-            >
-              Exit Demo
-            </button>
-            <button
-              type="button"
-              className={styles.demoNoticeRegisterBtn}
-              onClick={() => {
-                setAuthModalMode('signup');
-                setAuthModalOpen(true);
-              }}
-            >
-              Create Account
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Navigation Header */}
       <Navbar
@@ -356,7 +309,6 @@ export function App() {
         onTabChange={setActiveTab}
         streakCount={currentStreak}
         currentProfile={profile}
-        isDemo={isDemo}
         onOpenAuthModal={() => {
           setAuthModalMode('signin');
           setAuthModalOpen(true);
@@ -564,11 +516,6 @@ export function App() {
         onClose={() => setAuthModalOpen(false)}
         onSignInWithEmail={signInWithEmail}
         onSignUpWithEmail={signUpWithEmail}
-        onSignInAsDemo={() => {
-          enterDemoMode();
-          setAuthModalOpen(false);
-          showToast('Entered Demo Sandbox Mode', 'info');
-        }}
         onSuccess={handleAuthSuccess}
       />
 

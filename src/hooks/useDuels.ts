@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '../lib/supabase';
 import { Duel } from '../data/types';
-import {
-  demoStore,
-  DEMO_USER_ID,
-  isDemoModeActive,
-  isSupabaseConfigured,
-  supabase,
-} from '../lib/supabase';
 
 export interface UseDuelsReturn {
   readonly duels: readonly Duel[];
@@ -17,14 +11,11 @@ export interface UseDuelsReturn {
   readonly error: string | null;
   readonly sendChallenge: (
     opponentId: string,
-    problemId: string
+    problemId: string,
+    timeLimitSec?: number
   ) => Promise<{ success: boolean; duel?: Duel; error?: string }>;
-  readonly acceptDuel: (
-    duelId: string
-  ) => Promise<{ success: boolean; duel?: Duel; error?: string }>;
-  readonly declineDuel: (
-    duelId: string
-  ) => Promise<{ success: boolean; error?: string }>;
+  readonly acceptDuel: (duelId: string) => Promise<{ success: boolean; duel?: Duel; error?: string }>;
+  readonly declineDuel: (duelId: string) => Promise<{ success: boolean; error?: string }>;
   readonly submitSolve: (
     duelId: string,
     solveTimeSec: number
@@ -33,31 +24,18 @@ export interface UseDuelsReturn {
   readonly refreshDuels: () => Promise<void>;
 }
 
-/**
- * Hook to manage 1v1 problem solving duels between friends,
- * handling challenges, real-time status transitions, timers, and winner determination.
- */
 export function useDuels(currentUserId?: string): UseDuelsReturn {
   const [duels, setDuels] = useState<readonly Duel[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveUserId = currentUserId || DEMO_USER_ID;
-  const isDemo = isDemoModeActive() || !isSupabaseConfigured;
-
-  const loadDemoDuels = useCallback(() => {
-    try {
-      const items = demoStore.getDuels(effectiveUserId);
-      setDuels(items);
-      setLoading(false);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load demo duels';
-      setError(msg);
-      setLoading(false);
-    }
-  }, [effectiveUserId]);
-
   const loadSupabaseDuels = useCallback(async () => {
+    if (!currentUserId) {
+      setDuels([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -69,42 +47,24 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
           challenger:profiles!duels_challenger_id_fkey(*),
           opponent:profiles!duels_opponent_id_fkey(*)
         `)
-        .or(`challenger_id.eq.${effectiveUserId},opponent_id.eq.${effectiveUserId}`)
+        .or(`challenger_id.eq.${currentUserId},opponent_id.eq.${currentUserId}`)
         .order('created_at', { ascending: false });
 
-      if (fetchErr) {
-        // Fallback to demo store if table does not exist
-        loadDemoDuels();
-        return;
-      }
+      if (fetchErr) throw fetchErr;
 
       setDuels((data as Duel[]) || []);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error fetching duels';
-      setError(msg);
-      loadDemoDuels();
+    } catch {
+      setDuels([]);
     } finally {
       setLoading(false);
     }
-  }, [effectiveUserId, loadDemoDuels]);
-
-  const refreshDuels = useCallback(async () => {
-    if (isDemo) {
-      loadDemoDuels();
-    } else {
-      await loadSupabaseDuels();
-    }
-  }, [isDemo, loadDemoDuels, loadSupabaseDuels]);
+  }, [currentUserId]);
 
   useEffect(() => {
-    if (isDemo) {
-      loadDemoDuels();
-      const unsub = demoStore.subscribe('duels', loadDemoDuels);
-      return unsub;
-    } else {
-      loadSupabaseDuels();
+    loadSupabaseDuels();
+    if (currentUserId) {
       const channel = supabase
-        .channel(`duels-${effectiveUserId}`)
+        .channel(`duels-${currentUserId}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'duels' },
@@ -118,26 +78,26 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
         supabase.removeChannel(channel);
       };
     }
-  }, [isDemo, loadDemoDuels, loadSupabaseDuels, effectiveUserId]);
+  }, [loadSupabaseDuels, currentUserId]);
 
   const sendChallenge = async (
     opponentId: string,
-    problemId: string
+    problemId: string,
+    timeLimitSec: number = 1800
   ): Promise<{ success: boolean; duel?: Duel; error?: string }> => {
-    if (isDemo) {
-      const newDuel = demoStore.createDuel(effectiveUserId, opponentId, problemId);
-      return { success: true, duel: newDuel };
+    if (!currentUserId) {
+      return { success: false, error: 'User is not logged in' };
     }
 
     try {
       const { data, error: insertErr } = await supabase
         .from('duels')
         .insert({
-          challenger_id: effectiveUserId,
+          challenger_id: currentUserId,
           opponent_id: opponentId,
           problem_id: problemId,
+          time_limit_sec: timeLimitSec,
           status: 'pending',
-          created_at: new Date().toISOString(),
         })
         .select(`
           *,
@@ -148,10 +108,10 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
         .single();
 
       if (insertErr) throw insertErr;
-      await refreshDuels();
+      await loadSupabaseDuels();
       return { success: true, duel: data as Duel };
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send challenge';
+      const msg = err instanceof Error ? err.message : 'Failed to create challenge';
       return { success: false, error: msg };
     }
   };
@@ -159,18 +119,13 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
   const acceptDuel = async (
     duelId: string
   ): Promise<{ success: boolean; duel?: Duel; error?: string }> => {
-    if (isDemo) {
-      const updated = demoStore.acceptDuel(duelId);
-      if (!updated) return { success: false, error: 'Duel not found or already accepted' };
-      return { success: true, duel: updated };
-    }
-
     try {
+      const nowIso = new Date().toISOString();
       const { data, error: updateErr } = await supabase
         .from('duels')
         .update({
           status: 'active',
-          start_time: new Date().toISOString(),
+          started_at: nowIso,
         })
         .eq('id', duelId)
         .select(`
@@ -182,7 +137,7 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
         .single();
 
       if (updateErr) throw updateErr;
-      await refreshDuels();
+      await loadSupabaseDuels();
       return { success: true, duel: data as Duel };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to accept duel';
@@ -193,20 +148,14 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
   const declineDuel = async (
     duelId: string
   ): Promise<{ success: boolean; error?: string }> => {
-    if (isDemo) {
-      const updated = demoStore.declineDuel(duelId);
-      if (!updated) return { success: false, error: 'Duel not found' };
-      return { success: true };
-    }
-
     try {
-      const { error: updateErr } = await supabase
+      const { error: delErr } = await supabase
         .from('duels')
-        .update({ status: 'declined' })
+        .delete()
         .eq('id', duelId);
 
-      if (updateErr) throw updateErr;
-      await refreshDuels();
+      if (delErr) throw delErr;
+      await loadSupabaseDuels();
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to decline duel';
@@ -218,30 +167,22 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
     duelId: string,
     solveTimeSec: number
   ): Promise<{ success: boolean; duel?: Duel; error?: string }> => {
-    if (isDemo) {
-      const updated = demoStore.completeDuel(duelId, effectiveUserId, solveTimeSec);
-      if (!updated) return { success: false, error: 'Duel not found' };
-      return { success: true, duel: updated };
-    }
+    if (!currentUserId) return { success: false, error: 'User is not logged in' };
+    const current = duels.find((d) => d.id === duelId);
+    if (!current) return { success: false, error: 'Duel not found' };
+
+    const isChallenger = current.challenger_id === currentUserId;
+    const updates: Partial<Duel> = {
+      status: 'completed',
+      end_time: new Date().toISOString(),
+      winner_id: currentUserId,
+      ...(isChallenger ? { challenger_time_sec: solveTimeSec } : { opponent_time_sec: solveTimeSec }),
+    };
 
     try {
-      // Fetch duel to check participant role
-      const current = duels.find((d) => d.id === duelId);
-      if (!current) throw new Error('Duel not found');
-
-      const isChallenger = current.challenger_id === effectiveUserId;
-      const updates = isChallenger
-        ? { challenger_time_sec: solveTimeSec }
-        : { opponent_time_sec: solveTimeSec };
-
-      const { data, error: updateErr } = await supabase
+      const { data, error: updErr } = await supabase
         .from('duels')
-        .update({
-          ...updates,
-          status: 'completed',
-          winner_id: effectiveUserId,
-          end_time: new Date().toISOString(),
-        })
+        .update(updates)
         .eq('id', duelId)
         .select(`
           *,
@@ -251,11 +192,11 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
         `)
         .single();
 
-      if (updateErr) throw updateErr;
-      await refreshDuels();
+      if (updErr) throw updErr;
+      await loadSupabaseDuels();
       return { success: true, duel: data as Duel };
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to submit duel solve';
+      const msg = err instanceof Error ? err.message : 'Failed to submit solve';
       return { success: false, error: msg };
     }
   };
@@ -267,17 +208,9 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
     [duels]
   );
 
-  const activeDuels = useMemo<readonly Duel[]>(() => {
-    return duels.filter((d) => d.status === 'active');
-  }, [duels]);
-
-  const pendingDuels = useMemo<readonly Duel[]>(() => {
-    return duels.filter((d) => d.status === 'pending');
-  }, [duels]);
-
-  const completedDuels = useMemo<readonly Duel[]>(() => {
-    return duels.filter((d) => d.status === 'completed');
-  }, [duels]);
+  const activeDuels = useMemo(() => duels.filter((d) => d.status === 'active'), [duels]);
+  const pendingDuels = useMemo(() => duels.filter((d) => d.status === 'pending'), [duels]);
+  const completedDuels = useMemo(() => duels.filter((d) => d.status === 'completed'), [duels]);
 
   return {
     duels,
@@ -291,6 +224,8 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
     declineDuel,
     submitSolve,
     getDuelById,
-    refreshDuels,
+    refreshDuels: loadSupabaseDuels,
   };
 }
+
+export default useDuels;
