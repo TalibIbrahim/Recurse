@@ -133,16 +133,41 @@
   padding: 0.4375rem 0.75rem;
   font-size: 0.75rem;
   color: var(--label-secondary);
-  max-width: 18rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.shareUrlGroup span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: block;
 }
 
 .buttonGroup {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .modalCard {
+    padding: 1.25rem;
+  }
+  .actionsRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .buttonGroup {
+    flex-direction: column;
+  }
+  .copyBtn,
+  .downloadBtn {
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 .copyBtn {

@@ -54,6 +54,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
+  min-width: 0;
 }
 
 .titleRow {
@@ -67,6 +68,8 @@
   font-size: 0.9375rem;
   font-weight: 700;
   color: var(--label-primary);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .difficultyBadge {
@@ -96,6 +99,8 @@
 .metaText {
   font-size: 0.8125rem;
   color: var(--label-secondary);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .opponentBadge {

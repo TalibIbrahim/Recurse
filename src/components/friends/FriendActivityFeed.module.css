@@ -98,7 +98,10 @@
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--label-primary);
-  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .diffEasy {
@@ -121,6 +124,8 @@
   font-size: 0.75rem;
   color: var(--label-primary);
   line-height: 1.4;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .metaTagsRow {

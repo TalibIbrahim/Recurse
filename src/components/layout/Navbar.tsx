@@ -342,6 +342,67 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               );
             })}
+
+            {/* Quick Tools for Mobile/Tablet */}
+            <div className={styles.mobileDivider} />
+            <div className={styles.mobileSectionTitle}>Quick Tools</div>
+            <div className={styles.mobileToolsGrid}>
+              {onOpenDuel && (
+                <button
+                  type="button"
+                  className={styles.mobileToolBtn}
+                  onClick={() => {
+                    onOpenDuel();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <Swords size={15} className="text-accent-purple" />
+                  <span>1v1 Duel</span>
+                  {activeDuelsCount > 0 && (
+                    <span className={styles.duelBadge}>{activeDuelsCount}</span>
+                  )}
+                </button>
+              )}
+              {onOpenRecap && (
+                <button
+                  type="button"
+                  className={styles.mobileToolBtn}
+                  onClick={() => {
+                    onOpenRecap();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <BarChart3 size={15} className="text-accent-green" />
+                  <span>Weekly Recap</span>
+                </button>
+              )}
+              {onOpenShareCard && (
+                <button
+                  type="button"
+                  className={styles.mobileToolBtn}
+                  onClick={() => {
+                    onOpenShareCard();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <Share2 size={15} className="text-accent-orange" />
+                  <span>Dev Stat Card</span>
+                </button>
+              )}
+              {onOpenExtensionGuide && (
+                <button
+                  type="button"
+                  className={styles.mobileToolBtn}
+                  onClick={() => {
+                    onOpenExtensionGuide();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <Puzzle size={15} className="text-accent-blue" />
+                  <span>Extension</span>
+                </button>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

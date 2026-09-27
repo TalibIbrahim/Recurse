@@ -8,15 +8,19 @@
 
 .topRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   width: 100%;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .titleArea {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
+  flex: 1;
 }
 
 .heading {
@@ -27,11 +31,13 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .subheading {
   font-size: 0.8125rem;
   color: var(--label-secondary);
+  line-height: 1.4;
 }
 
 .presetBadge {
@@ -318,12 +324,17 @@
 .ambientMeta {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .ambientName {
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ambientStatus {

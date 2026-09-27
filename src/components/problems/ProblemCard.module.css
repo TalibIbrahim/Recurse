@@ -111,6 +111,8 @@
   font-weight: 600;
   color: var(--label-primary);
   line-height: 1.3;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .tagList {
@@ -126,6 +128,10 @@
   border-radius: 6px;
   font-size: 0.6875rem;
   color: var(--label-secondary);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notesExcerpt {
@@ -156,6 +162,8 @@
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .bottomActionRow {

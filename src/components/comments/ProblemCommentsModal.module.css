@@ -136,6 +136,8 @@
   color: var(--label-primary);
   line-height: 1.4;
   white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .deleteBtn {
