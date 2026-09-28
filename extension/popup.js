@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Save Settings handler
   btnSave.addEventListener('click', () => {
-    const rawUrl = serverUrlInput.value.trim() || 'https://recurse.pages.dev';
+    const rawUrl = serverUrlInput.value.trim() || 'https://recurse.talibibrahim04.workers.dev';
     const cleanUrl = rawUrl.replace(/\/+$/, '');
     const token = apiTokenInput.value.trim();
 
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Test Connection handler
   btnTest.addEventListener('click', async () => {
-    const rawUrl = serverUrlInput.value.trim() || 'https://recurse.pages.dev';
+    const rawUrl = serverUrlInput.value.trim() || 'https://recurse.talibibrahim04.workers.dev';
     const cleanUrl = rawUrl.replace(/\/+$/, '');
     const token = apiTokenInput.value.trim();
 

@@ -8,8 +8,8 @@ import {
   Copy,
   Check,
   Zap,
-  ExternalLink,
-  ShieldCheck,
+  Globe,
+  Key,
 } from 'lucide-react';
 import styles from './ExtensionGuideModal.module.css';
 
@@ -22,18 +22,30 @@ export interface ExtensionGuideModalProps {
 export const ExtensionGuideModal: React.FC<ExtensionGuideModalProps> = ({
   isOpen,
   onClose,
-  userId = 'usr_alex_chen_2026',
+  userId = '',
 }) => {
   const [copiedToken, setCopiedToken] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
   const [testSyncSuccess, setTestSyncSuccess] = useState(false);
 
-  const syncToken = `rc_sync_live_${userId.substring(0, 12)}_${btoa(userId).substring(0, 8)}`;
+  const serverUrl = window.location.origin;
+  const syncToken = userId || 'Please sign in to view your token';
 
   const handleCopyToken = async () => {
     try {
       await navigator.clipboard.writeText(syncToken);
       setCopiedToken(true);
       setTimeout(() => setCopiedToken(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(serverUrl);
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
     } catch {
       // Fallback
     }
@@ -64,11 +76,11 @@ export const ExtensionGuideModal: React.FC<ExtensionGuideModalProps> = ({
             <div className={styles.headerTitleGroup}>
               <div className={styles.subheading}>
                 <Puzzle size={14} />
-                <span>Zero-Friction Sync</span>
+                <span>Automated Practice Sync</span>
               </div>
               <h2 className={styles.title}>Browser Companion Extension</h2>
               <span className={styles.subtitle}>
-                Auto-sync LeetCode solves in real time with exact time spent, runtime, and pattern metrics.
+                Automatically log LeetCode solves to your account and streak in real time.
               </span>
             </div>
 
@@ -89,8 +101,8 @@ export const ExtensionGuideModal: React.FC<ExtensionGuideModalProps> = ({
                 <div className={styles.statusDot} />
                 <span className={styles.statusText}>
                   {testSyncSuccess
-                    ? 'Test Ping Received: WebSocket Connected'
-                    : 'Extension Listener Active on port 4182'}
+                    ? 'Sync Active: Extension Listener Online'
+                    : 'Auto-Sync Endpoint Ready on Cloudflare Edge'}
                 </span>
               </div>
 
@@ -110,9 +122,9 @@ export const ExtensionGuideModal: React.FC<ExtensionGuideModalProps> = ({
               <div className={styles.stepCard}>
                 <div className={styles.stepNumberBox}>1</div>
                 <div className={styles.stepContent}>
-                  <span className={styles.stepTitle}>Install Recurse Companion</span>
+                  <span className={styles.stepTitle}>Load Extension in Browser</span>
                   <p className={styles.stepDesc}>
-                    Available for Chrome, Edge, Brave, and Safari. Monitors leetcode.com/submissions for successful AC results.
+                    Open <code>chrome://extensions</code> (or Edge <code>edge://extensions</code>), toggle <strong>Developer mode</strong> ON in the top right, click <strong>Load unpacked</strong>, and select the <code>extension</code> folder in your project directory.
                   </p>
                 </div>
               </div>
@@ -121,29 +133,66 @@ export const ExtensionGuideModal: React.FC<ExtensionGuideModalProps> = ({
               <div className={styles.stepCard}>
                 <div className={styles.stepNumberBox}>2</div>
                 <div className={styles.stepContent}>
-                  <span className={styles.stepTitle}>Paste Personal Webhook Token</span>
+                  <span className={styles.stepTitle}>Connect Extension to Your Account</span>
                   <p className={styles.stepDesc}>
-                    Click the extension icon in your browser toolbar and paste this unique token:
+                    Click the Recurse extension icon in your toolbar and enter your Server URL and personal Sync Token:
                   </p>
-                  <div className={styles.tokenBox}>
-                    <code className={styles.tokenCode}>{syncToken}</code>
-                    <button
-                      type="button"
-                      className={styles.copyTokenBtn}
-                      onClick={handleCopyToken}
-                    >
-                      {copiedToken ? (
-                        <>
-                          <Check size={12} className="text-accent-green" />
-                          <span>Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={12} />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
+
+                  {/* Server URL field */}
+                  <div className="mb-2">
+                    <span className="text-[11px] font-medium text-label-secondary block mb-1">
+                      <Globe size={11} className="inline mr-1 text-accent-blue" />
+                      Server URL
+                    </span>
+                    <div className={styles.tokenBox}>
+                      <code className={styles.tokenCode}>{serverUrl}</code>
+                      <button
+                        type="button"
+                        className={styles.copyTokenBtn}
+                        onClick={handleCopyUrl}
+                      >
+                        {copiedUrl ? (
+                          <>
+                            <Check size={12} className="text-accent-green" />
+                            <span>Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sync Token / User ID field */}
+                  <div>
+                    <span className="text-[11px] font-medium text-label-secondary block mb-1">
+                      <Key size={11} className="inline mr-1 text-accent-green" />
+                      Account Sync Token (Your User ID)
+                    </span>
+                    <div className={styles.tokenBox}>
+                      <code className={styles.tokenCode}>{syncToken}</code>
+                      <button
+                        type="button"
+                        className={styles.copyTokenBtn}
+                        onClick={handleCopyToken}
+                        disabled={!userId}
+                      >
+                        {copiedToken ? (
+                          <>
+                            <Check size={12} className="text-accent-green" />
+                            <span>Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -152,9 +201,9 @@ export const ExtensionGuideModal: React.FC<ExtensionGuideModalProps> = ({
               <div className={styles.stepCard}>
                 <div className={styles.stepNumberBox}>3</div>
                 <div className={styles.stepContent}>
-                  <span className={styles.stepTitle}>Solve On LeetCode As Usual</span>
+                  <span className={styles.stepTitle}>Solve Problems on LeetCode</span>
                   <p className={styles.stepDesc}>
-                    Whenever you hit &ldquo;Submit&rdquo; and pass all testcases, Recurse automatically logs the attempt, advances your daily goal ring, and updates your streak!
+                    Whenever you click &ldquo;Submit&rdquo; on LeetCode and receive an <strong>Accepted</strong> result, the extension instantly syncs the solve to your account, advances your daily goal rings, and triggers a confirmation notification!
                   </p>
                 </div>
               </div>

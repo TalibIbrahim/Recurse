@@ -8,7 +8,9 @@
   ],
   "host_permissions": [
     "*://leetcode.com/problems/*",
-    "https://recurse.pages.dev/*",
+    "https://recurse.talibibrahim04.workers.dev/*",
+    "https://*.workers.dev/*",
+    "https://*.pages.dev/*",
     "http://localhost:*/*"
   ],
   "action": {

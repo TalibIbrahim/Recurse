@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const DEFAULT_SERVER_URL = 'https://recurse.pages.dev';
+  const DEFAULT_SERVER_URL = 'https://recurse.talibibrahim04.workers.dev';
   let lastLoggedSubmissionId = '';
   let isProcessing = false;
 
@@ -92,13 +92,14 @@
       }
 
       if (!apiToken) {
-        showToast('Recurse: Please configure your API Token in the extension popup.', true);
+        showToast('Recurse: Please set your User ID / Sync Token in the extension popup.', true);
         isProcessing = false;
         return;
       }
 
       const payload = {
         problem_slug: problemSlug,
+        user_id: apiToken,
         status: 'solved',
         submission_url: window.location.href,
         solved_at: new Date().toISOString(),
@@ -109,6 +110,7 @@
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiToken}`,
+          'X-User-Id': apiToken,
           'X-API-Token': apiToken,
         },
         body: JSON.stringify(payload),
@@ -136,16 +138,33 @@
     const slug = getProblemSlug();
     if (!slug) return;
 
-    // LeetCode UI selectors for Accepted state
+    let isAccepted = false;
     const resultElement =
       document.querySelector('[data-e2e-locator="submission-result"]') ||
+      document.querySelector('[data-e2e-locator="console-result"]') ||
       document.querySelector('span[data-state="success"]') ||
       document.querySelector('.text-green-s') ||
       document.querySelector('.text-success');
 
     if (resultElement && resultElement.textContent && resultElement.textContent.includes('Accepted')) {
-      // Create unique submission signature to avoid spamming the same solve
-      const submissionKey = `${slug}-${Date.now().toString().slice(0, -4)}`;
+      isAccepted = true;
+    } else {
+      const elements = document.querySelectorAll('span, div');
+      for (const el of elements) {
+        if (
+          el.childNodes.length === 1 &&
+          el.childNodes[0].nodeType === Node.TEXT_NODE &&
+          el.textContent.trim() === 'Accepted' &&
+          (el.offsetWidth > 0 || el.offsetHeight > 0)
+        ) {
+          isAccepted = true;
+          break;
+        }
+      }
+    }
+
+    if (isAccepted) {
+      const submissionKey = `${slug}-${Math.floor(Date.now() / 15000)}`;
       if (submissionKey !== lastLoggedSubmissionId) {
         lastLoggedSubmissionId = submissionKey;
         reportSolve(slug);
