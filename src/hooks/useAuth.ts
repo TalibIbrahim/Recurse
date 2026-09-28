@@ -51,9 +51,9 @@ export function useAuth(): UseAuthReturn {
         // Fallback profile if row is not created yet
         const fallbackProfile: Profile = {
           id: sbUser.id,
-          username: sbUser.user_metadata?.username || sbUser.email?.split('@')[0] || 'coder',
-          full_name: sbUser.user_metadata?.full_name || sbUser.email?.split('@')[0] || 'Coder',
-          avatar_url: sbUser.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+          username: sbUser.user_metadata?.username || sbUser.user_metadata?.user_name || sbUser.email?.split('@')[0] || 'coder',
+          full_name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'Coder',
+          avatar_url: sbUser.user_metadata?.avatar_url || sbUser.user_metadata?.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
           bio: '',
           leetcode_username: '',
           identity_label: undefined,
