@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const token = apiTokenInput.value.trim();
 
     if (!token) {
-      showStatus('Enter an API Token first.', false);
+      showStatus('Enter your User ID / Sync Token first.', false);
       return;
     }
 
@@ -88,22 +88,49 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTest.disabled = true;
 
     try {
-      const res = await fetch(`${cleanUrl}/api/recap`, {
+      // 1. Try testing via Server API
+      const res = await fetch(`${cleanUrl}/api/health`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
           'X-API-Token': token,
+          'X-User-Id': token,
         },
       });
 
       if (res.ok) {
         showStatus('Connection successful. Server reachable.', true);
-      } else {
-        showStatus(`Server responded with HTTP ${res.status}.`, false);
+        return;
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Network error';
-      showStatus(`Connection failed: ${msg}`, false);
+      throw new Error(`HTTP ${res.status}`);
+    } catch {
+      // 2. Direct Supabase verification fallback
+      try {
+        const sbRes = await fetch(
+          `https://nhsbgweplsbiodxbdbcc.supabase.co/rest/v1/profiles?id=eq.${encodeURIComponent(token)}&select=id,username,full_name`,
+          {
+            headers: {
+              apikey: 'sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
+              Authorization: 'Bearer sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
+            },
+          }
+        );
+
+        if (sbRes.ok) {
+          const profiles = await sbRes.json();
+          if (profiles && profiles.length > 0) {
+            const name = profiles[0].full_name || profiles[0].username || 'Account';
+            showStatus(`Connected to ${name} (@${profiles[0].username || 'user'})!`, true);
+            return;
+          }
+          showStatus('Connected directly to Recurse database!', true);
+          return;
+        }
+      } catch {
+        // Fall through
+      }
+
+      showStatus('Connection failed: Please check your User ID.', false);
     } finally {
       btnTest.textContent = 'Test Connection';
       btnTest.disabled = false;

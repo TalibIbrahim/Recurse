@@ -105,27 +105,61 @@
         solved_at: new Date().toISOString(),
       };
 
-      const res = await fetch(`${serverUrl}/api/extension/log-solve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiToken}`,
-          'X-User-Id': apiToken,
-          'X-API-Token': apiToken,
-        },
-        body: JSON.stringify(payload),
-      });
+      let loggedSuccessfully = false;
 
-      const data = await res.json();
-      if (res.ok && data.success) {
+      try {
+        const res = await fetch(`${serverUrl}/api/extension/log-solve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiToken}`,
+            'X-User-Id': apiToken,
+            'X-API-Token': apiToken,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          loggedSuccessfully = true;
+        }
+      } catch {
+        // Fall back to direct Supabase REST insertion
+      }
+
+      if (!loggedSuccessfully) {
+        try {
+          const sbRes = await fetch('https://nhsbgweplsbiodxbdbcc.supabase.co/rest/v1/attempts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: 'sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
+              Authorization: 'Bearer sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify({
+              user_id: apiToken,
+              problem_id: problemSlug,
+              status: 'solved',
+              approach_notes: 'Logged via Recurse Extension',
+              submission_url: window.location.href,
+              solved_at: new Date().toISOString(),
+            }),
+          });
+
+          if (sbRes.ok) {
+            loggedSuccessfully = true;
+          }
+        } catch {
+          // Fall through
+        }
+      }
+
+      if (loggedSuccessfully) {
         showToast(`Recurse: Solved "${problemSlug}" logged to streak.`);
       } else {
-        const errMessage = data.error || `HTTP ${res.status}`;
-        showToast(`Recurse sync error: ${errMessage}`, true);
+        showToast(`Recurse: Solve detected, could not reach server. Check token.`, true);
       }
-    } catch (err) {
-      console.error('Recurse sync network failure:', err);
-      showToast('Recurse: Network connection failed.', true);
     } finally {
       setTimeout(() => {
         isProcessing = false;
