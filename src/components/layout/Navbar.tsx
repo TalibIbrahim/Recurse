@@ -18,6 +18,7 @@ import {
   Share2,
   Puzzle,
 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './Navbar.module.css';
 import { Profile } from '../../data/types';
 import { RecurseLogo } from '../ui/RecurseLogo';
@@ -25,8 +26,8 @@ import { RecurseLogo } from '../ui/RecurseLogo';
 export type NavTabId = 'today' | 'problems' | 'friends' | 'leaderboard' | 'activity';
 
 export interface NavbarProps {
-  activeTab: NavTabId;
-  onTabChange: (tab: NavTabId) => void;
+  activeTab?: NavTabId;
+  onTabChange?: (tab: NavTabId) => void;
   streakCount: number;
   currentProfile: Profile | null;
   onOpenAuthModal: () => void;
@@ -51,9 +52,32 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenExtensionGuide,
   activeDuelsCount = 0,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const currentPath = location.pathname;
+  const currentTab: NavTabId =
+    currentPath.startsWith('/problems') ? 'problems' :
+    currentPath.startsWith('/friends') ? 'friends' :
+    currentPath.startsWith('/leaderboard') ? 'leaderboard' :
+    currentPath.startsWith('/stats') || currentPath.startsWith('/activity') ? 'activity' :
+    activeTab || 'today';
+
+  const handleNavClick = (tabId: NavTabId) => {
+    onTabChange?.(tabId);
+    const pathMap: Record<NavTabId, string> = {
+      today: '/today',
+      problems: '/problems',
+      friends: '/friends',
+      leaderboard: '/leaderboard',
+      activity: '/stats',
+    };
+    navigate(pathMap[tabId]);
+    setMobileMenuOpen(false);
+  };
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -81,7 +105,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Brand Group */}
         <div
           className={styles.brandGroup}
-          onClick={() => onTabChange('today')}
+          onClick={() => handleNavClick('today')}
           role="button"
           tabIndex={0}
           aria-label="Recurse Home"
@@ -92,13 +116,13 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Desktop Navigation Tabs */}
         <nav className={styles.desktopNav} aria-label="Main Navigation">
           {navItems.map((item) => {
-            const isActive = activeTab === item.id;
+            const isActive = currentTab === item.id;
             return (
               <button
                 key={item.id}
                 type="button"
                 className={`${styles.navTabButton} ${isActive ? styles.navTabActive : ''}`}
-                onClick={() => onTabChange(item.id)}
+                onClick={() => handleNavClick(item.id)}
               >
                 {isActive && (
                   <motion.div
@@ -238,7 +262,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className={styles.dropdownItem}
                           onClick={() => {
                             setDropdownOpen(false);
-                            onTabChange('activity');
+                            handleNavClick('activity');
                           }}
                         >
                           <BarChart3 size={15} />
@@ -250,7 +274,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className={styles.dropdownItem}
                           onClick={() => {
                             setDropdownOpen(false);
-                            onTabChange('friends');
+                            handleNavClick('friends');
                           }}
                         >
                           <Users size={15} />
@@ -266,6 +290,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         onClick={() => {
                           setDropdownOpen(false);
                           onSignOut();
+                          navigate('/');
                         }}
                       >
                         <LogOut size={15} />
@@ -324,7 +349,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           >
             {navItems.map((item) => {
-              const isActive = activeTab === item.id;
+              const isActive = currentTab === item.id;
               return (
                 <button
                   key={item.id}
@@ -332,10 +357,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className={`${styles.mobileTabButton} ${
                     isActive ? styles.mobileTabActive : ''
                   }`}
-                  onClick={() => {
-                    onTabChange(item.id);
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={() => handleNavClick(item.id)}
                 >
                   {item.icon}
                   <span>{item.label}</span>

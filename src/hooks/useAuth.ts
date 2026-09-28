@@ -17,6 +17,8 @@ export interface UseAuthReturn {
     fullName?: string
   ) => Promise<{ success: boolean; error?: string }>;
   readonly signInWithOAuth: (provider: 'github' | 'google') => Promise<{ success: boolean; error?: string }>;
+  readonly resetPasswordForEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
+  readonly updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
   readonly signOut: () => Promise<void>;
   readonly updateProfile: (updates: Partial<Profile>) => Promise<{ success: boolean; error?: string }>;
 }
@@ -199,7 +201,7 @@ export function useAuth(): UseAuthReturn {
           freezes_available: 2,
           freezes_used: 0,
           is_at_risk: false,
-          last_activity_date: null,
+          last_active_date: null,
           updated_at: new Date().toISOString(),
         });
 
@@ -231,13 +233,41 @@ export function useAuth(): UseAuthReturn {
       const { error: oAuthErr } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/today`,
         },
       });
       if (oAuthErr) throw oAuthErr;
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : `OAuth with ${provider} failed`;
+      setError(msg);
+      return { success: false, error: msg };
+    }
+  };
+
+  const resetPasswordForEmail = async (email: string) => {
+    setError(null);
+    try {
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (resetErr) throw resetErr;
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Password reset request failed';
+      setError(msg);
+      return { success: false, error: msg };
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    setError(null);
+    try {
+      const { error: updErr } = await supabase.auth.updateUser({ password });
+      if (updErr) throw updErr;
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Password update failed';
       setError(msg);
       return { success: false, error: msg };
     }
@@ -286,6 +316,8 @@ export function useAuth(): UseAuthReturn {
     signInWithEmail,
     signUpWithEmail,
     signInWithOAuth,
+    resetPasswordForEmail,
+    updatePassword,
     signOut,
     updateProfile,
   };

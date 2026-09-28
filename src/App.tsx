@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Flame,
   Target,
   Trophy,
   RotateCcw,
+  Loader2,
 } from 'lucide-react';
 import styles from './App.module.css';
 
@@ -15,9 +17,11 @@ import Navbar, { NavTabId } from './components/layout/Navbar';
 import GlassCard from './components/ui/GlassCard';
 import Toast from './components/ui/Toast';
 import LandingPage from './components/landing/LandingPage';
+import { RecurseLogo } from './components/ui/RecurseLogo';
 
-// Modals
-import AuthModal from './components/auth/AuthModal';
+// Modals & Auth
+import AuthModal, { AuthModalMode } from './components/auth/AuthModal';
+import ResetPasswordView from './components/auth/ResetPasswordView';
 import OnboardingModal, { OnboardingData } from './components/onboarding/OnboardingModal';
 import GoalSettingModal from './components/goals/GoalSettingModal';
 import LogAttemptModal from './components/problems/LogAttemptModal';
@@ -57,7 +61,8 @@ import { SEED_PROBLEMS } from './data/problemsSeed';
 import { Problem, Attempt } from './data/types';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<NavTabId>('today');
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Hooks
   const {
@@ -66,6 +71,9 @@ export function App() {
     loading: authLoading,
     signInWithEmail,
     signUpWithEmail,
+    signInWithOAuth,
+    resetPasswordForEmail,
+    updatePassword,
     signOut,
     updateProfile,
   } = useAuth();
@@ -138,39 +146,15 @@ export function App() {
 
   // Modals state
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('signin');
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [recapModalOpen, setRecapModalOpen] = useState(false);
   const [duelModalOpen, setDuelModalOpen] = useState(false);
   const [statCardModalOpen, setStatCardModalOpen] = useState(false);
   const [extensionModalOpen, setExtensionModalOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Toast feedback state
-  const [toast, setToast] = useState<{
-    message: string;
-    type: 'success' | 'info' | 'error';
-    visible: boolean;
-  }>({
-    message: '',
-    type: 'success',
-    visible: false,
-  });
-
-  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
-    setToast({ message, type, visible: true });
-  };
-
-  // Check if newly signed in user needs onboarding
-  useEffect(() => {
-    if (user) {
-      const hasCompleted = localStorage.getItem('recurse_onboarding_completed');
-      if (!hasCompleted && !profile?.identity_label) {
-        setShowOnboarding(true);
-      }
-    }
-  }, [user, profile?.identity_label]);
-
+  // Problem log modal state
   const [logModalState, setLogModalState] = useState<{
     isOpen: boolean;
     problem: Problem | null;
@@ -180,70 +164,87 @@ export function App() {
     problem: null,
   });
 
+  // Discussion modal state
   const [discussionModalState, setDiscussionModalState] = useState<{
     isOpen: boolean;
-    problemTitle: string;
     attemptId?: string;
+    problemTitle: string;
   }>({
     isOpen: false,
     problemTitle: '',
   });
 
-  // Comments hook for active discussion
   const {
     comments,
     addComment,
     deleteComment,
-  } = useComments(discussionModalState.attemptId, currentUserId);
+  } = useComments(discussionModalState.attemptId);
 
-  // Modal Handlers
-  const handleOpenLogModal = (problem: Problem, attempt?: Attempt) => {
-    const existing = attempt || getAttemptForProblem(problem.id);
+  // Toast notifications
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'info';
+    visible: boolean;
+  }>({
+    message: '',
+    type: 'info',
+    visible: false,
+  });
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type, visible: true });
+  };
+
+  // Open log attempt modal
+  const handleOpenLogModal = (problem: Problem, existingAttempt?: Attempt) => {
+    const attempt = existingAttempt || getAttemptForProblem(problem.id);
     setLogModalState({
       isOpen: true,
       problem,
-      attempt: existing,
+      attempt,
     });
   };
 
-  const handleOpenDiscussionFromProblem = (problem: Problem, attempt?: Attempt) => {
-    const existing = attempt || getAttemptForProblem(problem.id);
+  // Open discussion thread
+  const handleOpenDiscussionFromProblem = (problem: Problem) => {
+    const attempt = getAttemptForProblem(problem.id);
     setDiscussionModalState({
       isOpen: true,
-      problemTitle: problem.title,
-      attemptId: existing?.id,
+      attemptId: attempt?.id,
+      problemTitle: `${problem.frontend_id}. ${problem.title}`,
     });
   };
 
   const handleOpenDiscussionFromFeed = (attempt: Attempt) => {
     setDiscussionModalState({
       isOpen: true,
-      problemTitle: attempt.problem?.title || 'Problem Discussion',
       attemptId: attempt.id,
+      problemTitle: attempt.problem
+        ? `${attempt.problem.frontend_id}. ${attempt.problem.title}`
+        : 'Problem Discussion',
     });
   };
 
-  const handleAuthSuccess = (type: 'signin' | 'signup', username?: string) => {
-    setAuthModalOpen(false);
+  // Success handler from Auth Modal
+  const handleAuthSuccess = (type: 'signin' | 'signup', _username?: string) => {
     if (type === 'signup') {
-      showToast(`Account created! Welcome to Recurse, ${username || 'friend'}.`, 'success');
       setShowOnboarding(true);
+      showToast('Account created successfully! Welcome to Recurse.', 'success');
     } else {
-      showToast(`Signed in successfully. Welcome back!`, 'success');
+      showToast('Welcome back! Practice momentum restored.', 'success');
     }
+    navigate('/today');
   };
 
+  // Complete onboarding
   const handleCompleteOnboarding = async (data: OnboardingData) => {
     try {
-      await updateProfile({
-        full_name: data.fullName,
-        leetcode_username: data.leetcodeUsername,
-        identity_label: {
-          title: data.persona,
-          description: `Dedicated ${data.persona.toLowerCase()} practicing on Recurse`,
-          category: 'consistency',
-        },
-      });
+      if (data.fullName || data.leetcodeUsername) {
+        await updateProfile({
+          full_name: data.fullName || profile?.full_name,
+          leetcode_username: data.leetcodeUsername || profile?.leetcode_username,
+        });
+      }
 
       await updateCustomGoal(
         progress.easy_target,
@@ -266,8 +267,39 @@ export function App() {
   const currentStreak = streak?.current_streak ?? 0;
   const userRank = leaderboard.find((u) => u.is_current_user)?.rank ?? 1;
 
-  // Logged-out view: Landing Page
-  if (!authLoading && !user) {
+  // 1. Initial Auth Loading State
+  if (authLoading) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#09090B] text-label-secondary">
+        <RecurseLogo size={28} showWordmark={true} />
+        <div className="mt-4 flex items-center gap-2 text-xs font-medium text-label-tertiary">
+          <Loader2 size={16} className="animate-spin text-[#0A84FF]" />
+          <span>Initializing workspace...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Dedicated Password Reset Route (accessible logged in or out)
+  if (location.pathname === '/reset-password') {
+    return (
+      <>
+        <ResetPasswordView
+          onUpdatePassword={updatePassword}
+          onNotify={showToast}
+        />
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          visible={toast.visible}
+          onClose={() => setToast((prev) => ({ ...prev, visible: false }))}
+        />
+      </>
+    );
+  }
+
+  // 3. Logged-out view: Landing Page
+  if (!user) {
     return (
       <>
         <LandingPage
@@ -283,6 +315,8 @@ export function App() {
           onClose={() => setAuthModalOpen(false)}
           onSignInWithEmail={signInWithEmail}
           onSignUpWithEmail={signUpWithEmail}
+          onSignInWithOAuth={signInWithOAuth}
+          onResetPasswordForEmail={resetPasswordForEmail}
           onSuccess={handleAuthSuccess}
         />
 
@@ -296,7 +330,7 @@ export function App() {
     );
   }
 
-  // Logged-in view: User Dashboard
+  // 4. Logged-in view: User Dashboard with Client-side URL Routing
   return (
     <div className={styles.appRoot}>
       {/* Subtle Ambient Apple Blur Orbs */}
@@ -305,8 +339,6 @@ export function App() {
 
       {/* Navigation Header */}
       <Navbar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
         streakCount={currentStreak}
         currentProfile={profile}
         onOpenAuthModal={() => {
@@ -316,6 +348,7 @@ export function App() {
         onSignOut={async () => {
           await signOut();
           showToast('Signed out successfully', 'info');
+          navigate('/');
         }}
         onOpenRecap={() => setRecapModalOpen(true)}
         onOpenDuel={() => setDuelModalOpen(true)}
@@ -388,125 +421,145 @@ export function App() {
           </GlassCard>
         </section>
 
-        {/* Tab Content Rendering */}
-        <AnimatePresence mode="wait">
-          {activeTab === 'today' && (
-            <motion.div
-              key="tab-today"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-              className={styles.todayGrid}
-            >
-              {/* Left Column: Rings & Revisit Queue */}
-              <div className={styles.colLeft}>
-                <DailyGoalRing
-                  progress={progress}
-                  weeklyProgress={weeklyProgress}
-                  dualProgress={dualProgress}
-                  ambientFriend={ambientFriend}
-                  preset={preset}
-                  cadence={cadence}
-                  isAtRisk={streak?.is_at_risk}
-                  onOpenSettings={() => setGoalModalOpen(true)}
+        {/* Routes */}
+        <Routes>
+          <Route path="/" element={<Navigate to="/today" replace />} />
+          <Route
+            path="/today"
+            element={
+              <motion.div
+                key="route-today"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+                className={styles.todayGrid}
+              >
+                {/* Left Column: Rings & Revisit Queue */}
+                <div className={styles.colLeft}>
+                  <DailyGoalRing
+                    progress={progress}
+                    weeklyProgress={weeklyProgress}
+                    dualProgress={dualProgress}
+                    ambientFriend={ambientFriend}
+                    preset={preset}
+                    cadence={cadence}
+                    isAtRisk={streak?.is_at_risk}
+                    onOpenSettings={() => setGoalModalOpen(true)}
+                  />
+
+                  <NeedsRevisitSection
+                    revisitProblems={revisitProblems}
+                    onMarkReviewed={markReviewed}
+                    onSolveAgain={(prob, att) => handleOpenLogModal(prob, att)}
+                  />
+
+                  <StreakCard streak={streak} />
+                </div>
+
+                {/* Right Column: Peer Activity & Live Feeds */}
+                <div className={styles.colRight}>
+                  <FriendActivityFeed
+                    friendAttempts={friendAttempts}
+                    onOpenDiscussion={handleOpenDiscussionFromFeed}
+                  />
+                </div>
+              </motion.div>
+            }
+          />
+
+          <Route
+            path="/problems"
+            element={
+              <motion.div
+                key="route-problems"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <ProblemList
+                  problems={SEED_PROBLEMS}
+                  attempts={attempts}
+                  onOpenLogModal={handleOpenLogModal}
+                  onOpenDiscussion={handleOpenDiscussionFromProblem}
+                  currentUserId={currentUserId}
+                />
+              </motion.div>
+            }
+          />
+
+          <Route
+            path="/friends"
+            element={
+              <motion.div
+                key="route-friends"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-col gap-6"
+              >
+                <FriendsView
+                  friends={friends}
+                  pendingRequests={pendingRequests}
+                  onSearchUsers={searchUsers}
+                  onSendFriendRequest={sendFriendRequest}
+                  onRespondRequest={respondToRequest}
+                  onRemoveFriend={removeFriend}
+                  onChallengeFriend={() => setDuelModalOpen(true)}
+                  currentUserId={currentUserId}
                 />
 
-                <NeedsRevisitSection
-                  revisitProblems={revisitProblems}
-                  onMarkReviewed={markReviewed}
-                  onSolveAgain={(prob, att) => handleOpenLogModal(prob, att)}
-                />
-
-                <StreakCard streak={streak} />
-              </div>
-
-              {/* Right Column: Peer Activity & Live Feeds */}
-              <div className={styles.colRight}>
                 <FriendActivityFeed
                   friendAttempts={friendAttempts}
                   onOpenDiscussion={handleOpenDiscussionFromFeed}
                 />
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            }
+          />
 
-          {activeTab === 'problems' && (
-            <motion.div
-              key="tab-problems"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-            >
-              <ProblemList
-                problems={SEED_PROBLEMS}
-                attempts={attempts}
-                onOpenLogModal={handleOpenLogModal}
-                onOpenDiscussion={handleOpenDiscussionFromProblem}
-                currentUserId={currentUserId}
-              />
-            </motion.div>
-          )}
+          <Route
+            path="/leaderboard"
+            element={
+              <motion.div
+                key="route-leaderboard"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <LeaderboardView
+                  leaderboard={leaderboard}
+                  timeframe={timeframe}
+                  onTimeframeChange={setTimeframe}
+                />
+              </motion.div>
+            }
+          />
 
-          {activeTab === 'friends' && (
-            <motion.div
-              key="tab-friends"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-              className="flex flex-col gap-6"
-            >
-              <FriendsView
-                friends={friends}
-                pendingRequests={pendingRequests}
-                onSearchUsers={searchUsers}
-                onSendFriendRequest={sendFriendRequest}
-                onRespondRequest={respondToRequest}
-                onRemoveFriend={removeFriend}
-                onChallengeFriend={() => setDuelModalOpen(true)}
-                currentUserId={currentUserId}
-              />
+          <Route
+            path="/stats"
+            element={
+              <motion.div
+                key="route-stats"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+                className="flex flex-col gap-6"
+              >
+                <StreakCard streak={streak} />
+                <BadgesGrid currentUserId={currentUserId} />
+                <HeatmapView heatmapData={heatmapData} />
+              </motion.div>
+            }
+          />
 
-              <FriendActivityFeed
-                friendAttempts={friendAttempts}
-                onOpenDiscussion={handleOpenDiscussionFromFeed}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'leaderboard' && (
-            <motion.div
-              key="tab-leaderboard"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-            >
-              <LeaderboardView
-                leaderboard={leaderboard}
-                timeframe={timeframe}
-                onTimeframeChange={setTimeframe}
-              />
-            </motion.div>
-          )}
-
-          {activeTab === 'activity' && (
-            <motion.div
-              key="tab-activity"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
-              className="flex flex-col gap-6"
-            >
-              <StreakCard streak={streak} />
-              <BadgesGrid currentUserId={currentUserId} />
-              <HeatmapView heatmapData={heatmapData} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+          {/* Alias /activity to /stats */}
+          <Route path="/activity" element={<Navigate to="/stats" replace />} />
+          <Route path="*" element={<Navigate to="/today" replace />} />
+        </Routes>
       </main>
 
       {/* Global Modals */}
@@ -516,6 +569,8 @@ export function App() {
         onClose={() => setAuthModalOpen(false)}
         onSignInWithEmail={signInWithEmail}
         onSignUpWithEmail={signUpWithEmail}
+        onSignInWithOAuth={signInWithOAuth}
+        onResetPasswordForEmail={resetPasswordForEmail}
         onSuccess={handleAuthSuccess}
       />
 
@@ -599,15 +654,15 @@ export function App() {
       {/* Apple-style Footer */}
       <footer className={styles.appFooter}>
         <div className={styles.footerLinks}>
-          <a href="#today" onClick={() => setActiveTab('today')}>Today</a>
+          <Link to="/today">Today</Link>
           <span>•</span>
-          <a href="#problems" onClick={() => setActiveTab('problems')}>Problems Catalog</a>
+          <Link to="/problems">Problems Catalog</Link>
           <span>•</span>
-          <a href="#friends" onClick={() => setActiveTab('friends')}>Accountability Friends</a>
+          <Link to="/friends">Accountability Friends</Link>
           <span>•</span>
-          <a href="#leaderboard" onClick={() => setActiveTab('leaderboard')}>Leaderboard</a>
+          <Link to="/leaderboard">Leaderboard</Link>
           <span>•</span>
-          <a href="#activity" onClick={() => setActiveTab('activity')}>Milestones &amp; Heatmap</a>
+          <Link to="/stats">Milestones &amp; Heatmap</Link>
         </div>
         <p>© 2026 Recurse. Engineered with Apple Human Interface Guidelines &amp; Framer Motion.</p>
       </footer>
