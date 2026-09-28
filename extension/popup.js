@@ -75,12 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Test Connection handler
   btnTest.addEventListener('click', async () => {
-    const rawUrl = serverUrlInput.value.trim() || 'https://recurse.talibibrahim04.workers.dev';
-    const cleanUrl = rawUrl.replace(/\/+$/, '');
     const token = apiTokenInput.value.trim();
 
     if (!token) {
-      showStatus('Enter your User ID / Sync Token first.', false);
+      showStatus('Enter your Account Sync Token (User ID) first.', false);
       return;
     }
 
@@ -88,49 +86,30 @@ document.addEventListener('DOMContentLoaded', () => {
     btnTest.disabled = true;
 
     try {
-      // 1. Try testing via Server API
-      const res = await fetch(`${cleanUrl}/api/health`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-API-Token': token,
-          'X-User-Id': token,
-        },
-      });
+      const sbRes = await fetch(
+        `https://nhsbgweplsbiodxbdbcc.supabase.co/rest/v1/profiles?id=eq.${encodeURIComponent(token)}&select=id,username,full_name`,
+        {
+          headers: {
+            apikey: 'sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
+            Authorization: 'Bearer sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
+          },
+        }
+      );
 
-      if (res.ok) {
-        showStatus('Connection successful. Server reachable.', true);
-        return;
-      }
-      throw new Error(`HTTP ${res.status}`);
-    } catch {
-      // 2. Direct Supabase verification fallback
-      try {
-        const sbRes = await fetch(
-          `https://nhsbgweplsbiodxbdbcc.supabase.co/rest/v1/profiles?id=eq.${encodeURIComponent(token)}&select=id,username,full_name`,
-          {
-            headers: {
-              apikey: 'sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
-              Authorization: 'Bearer sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
-            },
-          }
-        );
-
-        if (sbRes.ok) {
-          const profiles = await sbRes.json();
-          if (profiles && profiles.length > 0) {
-            const name = profiles[0].full_name || profiles[0].username || 'Account';
-            showStatus(`Connected to ${name} (@${profiles[0].username || 'user'})!`, true);
-            return;
-          }
-          showStatus('Connected directly to Recurse database!', true);
+      if (sbRes.ok) {
+        const profiles = await sbRes.json();
+        if (profiles && profiles.length > 0) {
+          const name = profiles[0].full_name || profiles[0].username || 'Account';
+          showStatus(`Connected to ${name} (@${profiles[0].username || 'user'})!`, true);
           return;
         }
-      } catch {
-        // Fall through
+        showStatus('Verified connection to Recurse database!', true);
+        return;
       }
-
-      showStatus('Connection failed: Please check your User ID.', false);
+      showStatus('Connection failed: Invalid Token / User ID.', false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error';
+      showStatus(`Connection error: ${msg}`, false);
     } finally {
       btnTest.textContent = 'Test Connection';
       btnTest.disabled = false;
