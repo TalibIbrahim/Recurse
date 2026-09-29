@@ -72,13 +72,14 @@ export function useStreak(currentUserId?: string): UseStreakReturn {
       if (attErr) throw attErr;
 
       const probMap = new Map(SEED_PROBLEMS.map((p) => [p.id, p]));
+      const slugMap = new Map(SEED_PROBLEMS.map((p) => [p.leetcode_slug, p]));
       const solves = (attemptsRows || []).map((row: unknown) => {
         const r = row as {
           problem_id: string;
           solved_at: string;
           problems?: { title: string; difficulty: ProblemDifficulty };
         };
-        const fallbackProb = probMap.get(r.problem_id);
+        const fallbackProb = probMap.get(r.problem_id) || slugMap.get(r.problem_id);
         return {
           date: r.solved_at.split('T')[0],
           problemId: r.problem_id,

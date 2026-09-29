@@ -134,7 +134,7 @@ export function useDailyGoal(currentUserId?: string): UseDailyGoalReturn {
           if (typed.problems?.difficulty) {
             diffs.push(typed.problems.difficulty);
           } else if (typed.problem_id) {
-            const fb = probMap.get(typed.problem_id);
+            const fb = probMap.get(typed.problem_id) || SEED_PROBLEMS.find((p) => p.leetcode_slug === typed.problem_id);
             if (fb) diffs.push(fb.difficulty);
           }
         });

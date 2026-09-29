@@ -120,10 +120,21 @@ export function useAuth(): UseAuthReturn {
       setSession(newSession);
       if (newSession?.user) {
         await fetchSupabaseProfile(newSession.user);
+        // Notify extension auth-bridge that session updated
+        try {
+          window.postMessage({ type: 'RECURSE_SESSION_UPDATE', event: 'SIGNED_IN' }, '*');
+        } catch {
+          // Non-critical
+        }
       } else {
         setUser(null);
         setProfile(null);
         setLoading(false);
+        try {
+          window.postMessage({ type: 'RECURSE_SESSION_UPDATE', event: 'SIGNED_OUT' }, '*');
+        } catch {
+          // Non-critical
+        }
       }
     });
 

@@ -1,26 +1,37 @@
 {
   "manifest_version": 3,
   "name": "Recurse - LeetCode Solve Sync",
-  "version": "1.0.0",
-  "description": "Automatically sync accepted LeetCode solves with Recurse peer accountability and streak tracking.",
+  "version": "1.1.0",
+  "description": "Automatically track and sync accepted LeetCode solves with Recurse peer accountability and streak tracking.",
   "permissions": [
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "*://leetcode.com/problems/*",
+    "https://nhsbgweplsbiodxbdbcc.supabase.co/*",
+    "https://*.supabase.co/*",
     "https://recurse.talibibrahim04.workers.dev/*",
     "https://*.workers.dev/*",
-    "https://*.pages.dev/*",
     "http://localhost:*/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Recurse Configuration"
+    "default_title": "Recurse Extension"
   },
   "content_scripts": [
     {
       "matches": ["*://leetcode.com/problems/*"],
       "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://recurse.talibibrahim04.workers.dev/*",
+        "https://*.workers.dev/*",
+        "http://localhost:*/*"
+      ],
+      "js": ["auth-bridge.js"],
       "run_at": "document_idle"
     }
   ]
