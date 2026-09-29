@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Recurse - LeetCode Solve Sync",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Automatically track and sync accepted LeetCode solves with Recurse peer accountability and streak tracking.",
   "permissions": [
     "storage",
@@ -9,7 +9,7 @@
     "scripting"
   ],
   "host_permissions": [
-    "*://leetcode.com/problems/*",
+    "*://leetcode.com/*",
     "https://nhsbgweplsbiodxbdbcc.supabase.co/*",
     "https://*.supabase.co/*",
     "https://recurse.talibibrahim04.workers.dev/*",
@@ -36,7 +36,13 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://leetcode.com/problems/*"],
+      "matches": ["*://leetcode.com/*"],
+      "js": ["leetcode-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://leetcode.com/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     },

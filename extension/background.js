@@ -7,7 +7,8 @@
  */
 
 const INJECTIONS = [
-  { file: 'content.js', patterns: ['*://leetcode.com/problems/*'] },
+  { file: 'leetcode-hook.js', patterns: ['*://leetcode.com/*'], world: 'MAIN' },
+  { file: 'content.js', patterns: ['*://leetcode.com/*'] },
   {
     file: 'auth-bridge.js',
     patterns: [
@@ -19,7 +20,7 @@ const INJECTIONS = [
 ];
 
 chrome.runtime.onInstalled.addListener(async () => {
-  for (const { file, patterns } of INJECTIONS) {
+  for (const { file, patterns, world } of INJECTIONS) {
     let tabs = [];
     try {
       tabs = await chrome.tabs.query({ url: patterns });
@@ -29,7 +30,11 @@ chrome.runtime.onInstalled.addListener(async () => {
     for (const tab of tabs) {
       if (tab.id === undefined || tab.discarded) continue;
       try {
-        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: [file] });
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: [file],
+          ...(world ? { world } : {}),
+        });
       } catch {
         // Tab may be closing or not yet loaded — it will get the script on next load.
       }

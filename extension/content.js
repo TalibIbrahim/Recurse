@@ -194,6 +194,7 @@
       const session = await storageGet([
         'recurse_user_id', 'recurse_token', 'recurse_access_token', 'recurse_connected', 'logged_solves',
       ]);
+      const slugTitle = slug === getProblemSlug() ? getProblemTitle() : null;
 
       const userId = session.recurse_user_id || session.recurse_token || '';
       if (!userId || session.recurse_connected === false) {
@@ -201,21 +202,16 @@
         return;
       }
 
-      // Already logged this problem today — the database de-duplicates too,
-      // but skipping here avoids a pointless request and a repeat toast.
+      // Same-day repeats are de-duplicated by the database, so always send.
       const day = localDateKey();
       const logged = session.logged_solves && typeof session.logged_solves === 'object' ? session.logged_solves : {};
-      if (logged[slug] === day) {
-        showToast('Recurse: "' + (getProblemTitle() || slug) + '" is already logged for today.', 'info');
-        return;
-      }
 
       const payload = {
         p_user_id: userId,
         p_problem_slug: slug,
         p_submission_url: window.location.href,
-        p_title: getProblemTitle(),
-        p_difficulty: getProblemDifficulty(),
+        p_title: slugTitle,
+        p_difficulty: slugTitle ? getProblemDifficulty() : null,
       };
 
       let recorded = false;
@@ -241,8 +237,24 @@
     }
   }
 
-  // Arm detection when the user clicks LeetCode's Submit button (or presses
-  // Ctrl/Cmd+Enter, LeetCode's submit shortcut).
+  // Primary detection: verdicts from LeetCode's own submission API, relayed by
+  // leetcode-hook.js (runs in the page context, where it can see network calls).
+  let lastReportedSubmission = null;
+  let networkVerdictAt = 0;
+
+  window.addEventListener('message', function (event) {
+    const msg = event.data;
+    if (event.source !== window || !msg || msg.source !== 'recurse-leetcode-hook') return;
+    networkVerdictAt = Date.now();
+    submitArmedAt = 0; // Network verdict wins; disarm the DOM fallback
+    if (msg.type !== 'accepted' || !msg.slug) return;
+    if (msg.submissionId === lastReportedSubmission) return;
+    lastReportedSubmission = msg.submissionId;
+    reportSolve(msg.slug);
+  });
+
+  // Fallback: if the network hook didn't fire (e.g. LeetCode changed its API),
+  // watch LeetCode's submission-result panel after the user clicks Submit.
   function isSubmitControl(target) {
     const el = target && target.closest ? target.closest('button, [role="button"]') : null;
     if (!el) return false;
@@ -250,9 +262,16 @@
     return (el.textContent || '').trim() === 'Submit';
   }
 
+  // Only LeetCode's dedicated result element counts — never loose "Accepted"
+  // text, which also appears in the problem's acceptance statistics.
+  function resultShowsAccepted() {
+    const result = document.querySelector('[data-e2e-locator="submission-result"]');
+    return Boolean(result && (result.textContent || '').indexOf('Accepted') >= 0);
+  }
+
   function armSubmit() {
     submitArmedAt = Date.now();
-    verdictCleared = !findAcceptedVerdict();
+    verdictCleared = !resultShowsAccepted();
   }
 
   document.addEventListener('click', function (e) {
@@ -265,41 +284,25 @@
     }
   }, true);
 
-  function findAcceptedVerdict() {
-    const result = document.querySelector('[data-e2e-locator="submission-result"]');
-    if (result && (result.textContent || '').indexOf('Accepted') >= 0) return true;
-
-    // Fallback for UI changes: a visible leaf node reading exactly "Accepted".
-    const elements = document.querySelectorAll('span, div, h3, h4');
-    for (let i = 0; i < elements.length; i++) {
-      const el = elements[i];
-      if (
-        el.childNodes.length === 1 &&
-        el.childNodes[0].nodeType === Node.TEXT_NODE &&
-        el.textContent.trim() === 'Accepted' &&
-        (el.offsetWidth > 0 || el.offsetHeight > 0)
-      ) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   function scanForAcceptedResult() {
     if (!submitArmedAt || Date.now() - submitArmedAt > SUBMIT_WINDOW_MS) return;
+    if (networkVerdictAt >= submitArmedAt) return;
 
     const slug = getProblemSlug();
     if (!slug) return;
 
-    if (!findAcceptedVerdict()) {
+    if (!resultShowsAccepted()) {
       verdictCleared = true;
     } else if (verdictCleared) {
-      submitArmedAt = 0; // One report per submission
-      reportSolve(slug);
+      // Give the network hook a moment to report first, then fall back.
+      const armedAt = submitArmedAt;
+      submitArmedAt = 0;
+      setTimeout(function () {
+        if (networkVerdictAt < armedAt) reportSolve(slug);
+      }, 1500);
     }
   }
 
-  // Observe DOM mutations to catch async LeetCode submission results
   let scanScheduled = false;
   const observer = new MutationObserver(function () {
     if (!submitArmedAt || scanScheduled) return;
