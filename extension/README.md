@@ -65,3 +65,14 @@ A lightweight Manifest V3 browser extension that automatically captures accepted
 4. A toast confirms the solve was logged. If Recurse can't be reached, the solve is queued and synced the next time you open the Recurse dashboard.
 
 > Requires `supabase/fix_schema_drift.sql` to be applied for title/difficulty capture; older databases fall back to slug-only logging.
+
+---
+
+## Updating the Extension
+
+Chrome only lets extensions install new code through the Chrome Web Store, so an unpacked extension updates from its folder on disk:
+
+1. Run `git pull` in the Recurse folder.
+2. Open the extension popup and click **Reload extension** (bottom right).
+
+The popup checks `/extension-version.json` on the Recurse site and shows a banner when a newer version is available. The version is taken from `extension/manifest.json` at build time — bump it there when you change the extension. After a reload, open LeetCode and Recurse tabs are reconnected automatically; no page refresh needed.

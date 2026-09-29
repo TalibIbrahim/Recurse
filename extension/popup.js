@@ -234,6 +234,77 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- Version, update check & reload ---
+  const versionBadge = document.getElementById('versionBadge');
+  const updateBanner = document.getElementById('updateBanner');
+  const updateText = document.getElementById('updateText');
+  const btnReload = document.getElementById('btnReload');
+  const btnReloadNow = document.getElementById('btnReloadNow');
+  const btnCheckUpdate = document.getElementById('btnCheckUpdate');
+
+  const installedVersion =
+    typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest
+      ? chrome.runtime.getManifest().version
+      : '0.0.0';
+
+  if (versionBadge) versionBadge.textContent = `v${installedVersion}`;
+
+  // Returns >0 if a is newer than b.
+  function compareVersions(a, b) {
+    const pa = String(a).split('.').map((n) => parseInt(n, 10) || 0);
+    const pb = String(b).split('.').map((n) => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const diff = (pa[i] || 0) - (pb[i] || 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  }
+
+  function showUpdateBanner(latest) {
+    updateText.innerHTML =
+      `<strong>Version ${latest} is available</strong> (you have ${installedVersion}). ` +
+      'Run <code>git pull</code> in the Recurse folder, then reload the extension.';
+    updateBanner.classList.add('visible');
+  }
+
+  async function checkForUpdate(manual) {
+    if (manual) {
+      btnCheckUpdate.disabled = true;
+      btnCheckUpdate.textContent = 'Checking...';
+    }
+    try {
+      const res = await fetch(`${RECURSE_BASE_URL}/extension-version.json`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { version: latest } = await res.json();
+      if (latest && compareVersions(latest, installedVersion) > 0) {
+        showUpdateBanner(latest);
+      } else if (manual) {
+        updateBanner.classList.remove('visible');
+        showAlert(`You're up to date (v${installedVersion}).`, true);
+      }
+    } catch {
+      if (manual) showAlert('Could not check for updates. Try again later.', false);
+    } finally {
+      if (manual) {
+        btnCheckUpdate.disabled = false;
+        btnCheckUpdate.textContent = 'Check for updates';
+      }
+    }
+  }
+
+  // Reloads the extension from its folder on disk, picking up pulled changes.
+  // The background worker then re-attaches to open LeetCode / Recurse tabs.
+  function reloadExtension() {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.reload) {
+      chrome.runtime.reload();
+    }
+  }
+
+  btnReload?.addEventListener('click', reloadExtension);
+  btnReloadNow?.addEventListener('click', reloadExtension);
+  btnCheckUpdate?.addEventListener('click', () => checkForUpdate(true));
+
   // Initial check
   checkSession();
+  checkForUpdate(false);
 });

@@ -174,7 +174,7 @@
     window.__RECURSE_EXTENSION_AVAILABLE__ = true;
     window.dispatchEvent(
       new CustomEvent('recurse:extension-ready', {
-        detail: { version: '1.2.0' },
+        detail: { version: chrome.runtime.getManifest().version },
       })
     );
   }

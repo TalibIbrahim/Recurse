@@ -184,7 +184,12 @@
     isProcessing = true;
 
     try {
-      if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+      // After the extension is reloaded, scripts left in open tabs lose access to it.
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.id) {
+        showToast('Recurse was updated. Refresh this page to keep tracking solves.', 'warning');
+        return;
+      }
+      if (!chrome.storage || !chrome.storage.local) return;
 
       const session = await storageGet([
         'recurse_user_id', 'recurse_token', 'recurse_access_token', 'recurse_connected', 'logged_solves',

@@ -289,6 +289,74 @@
       border: 1px solid rgba(16, 185, 129, 0.25);
     }
 
+    /* Update banner & footer */
+    .update-banner {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      font-size: 11px;
+      line-height: 1.45;
+      color: #BAE6FD;
+    }
+
+    .update-banner.visible {
+      display: flex;
+    }
+
+    .update-banner strong {
+      color: #FFFFFF;
+    }
+
+    .update-banner code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 10px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .update-banner .btn {
+      margin-bottom: 0;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--card-border);
+    }
+
+    .footer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: transparent;
+      border: none;
+      padding: 4px 2px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .footer-btn:hover:not(:disabled) {
+      color: var(--text);
+    }
+
+    .footer-btn:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+
     .status-alert.error {
       display: flex;
       background: rgba(239, 68, 68, 0.12);
@@ -303,7 +371,12 @@
       <div class="brand-mark"></div>
       <div class="brand-title">Recurse</div>
     </div>
-    <div class="badge">Extension</div>
+    <div class="badge" id="versionBadge">Extension</div>
+  </div>
+
+  <div class="update-banner" id="updateBanner" role="status">
+    <span id="updateText"></span>
+    <button type="button" id="btnReloadNow" class="btn btn-primary">Reload Extension</button>
   </div>
 
   <!-- View A: Connected -->
@@ -363,6 +436,15 @@
   </div>
 
   <div id="statusAlert" class="status-alert"></div>
+
+  <div class="footer">
+    <button type="button" id="btnCheckUpdate" class="footer-btn" title="Compare with the latest version published on Recurse">
+      Check for updates
+    </button>
+    <button type="button" id="btnReload" class="footer-btn" title="Reload the extension from its folder to apply updated files">
+      &#x21bb; Reload extension
+    </button>
+  </div>
 
   <script src="popup.js"></script>
 </body>
