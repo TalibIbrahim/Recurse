@@ -60,6 +60,8 @@ A lightweight Manifest V3 browser extension that automatically captures accepted
    ```
    https://leetcode.com/problems/two-sum/
    ```
-2. Write and submit your code.
-3. Upon receiving an **Accepted** verdict, the extension detects the result via a mutation observer and dispatches an authenticated POST request to `/api/extension/log-solve`.
-4. A subtle notification toast will confirm that your solve has been credited to your Recurse streak.
+2. Write your code and click **Submit** (or press Ctrl/Cmd+Enter). "Run" results are ignored.
+3. When the verdict is **Accepted**, the extension calls the Supabase `log_extension_solve` RPC with the problem slug, title and difficulty. The same problem is only counted once per day.
+4. A toast confirms the solve was logged. If Recurse can't be reached, the solve is queued and synced the next time you open the Recurse dashboard.
+
+> Requires `supabase/fix_schema_drift.sql` to be applied for title/difficulty capture; older databases fall back to slug-only logging.

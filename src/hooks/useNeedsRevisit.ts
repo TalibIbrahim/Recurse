@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Attempt } from '../data/types';
+import { hydrateAttempts } from '../lib/problems';
+import { notifyDataChanged, useDataRefresh } from '../lib/dataSync';
 
 export interface UseNeedsRevisitReturn {
   readonly revisitProblems: readonly Attempt[];
@@ -24,23 +26,18 @@ export function useNeedsRevisit(currentUserId?: string): UseNeedsRevisitReturn {
     }
 
     try {
-      setLoading(true);
       setError(null);
 
       const { data, error: attErr } = await supabase
         .from('attempts')
-        .select(`
-          *,
-          problem:problems(*),
-          user:profiles(*)
-        `)
+        .select('*, user:profiles(*)')
         .eq('user_id', currentUserId)
         .or('needs_revisit.eq.true,status.eq.needs_review')
         .order('solved_at', { ascending: false });
 
       if (attErr) throw attErr;
 
-      setRevisitProblems((data as Attempt[]) || []);
+      setRevisitProblems(hydrateAttempts(data));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error fetching revisit problems';
       setError(msg);
@@ -70,6 +67,8 @@ export function useNeedsRevisit(currentUserId?: string): UseNeedsRevisitReturn {
     }
   }, [currentUserId, loadSupabaseRevisits]);
 
+  useDataRefresh(loadSupabaseRevisits, Boolean(currentUserId));
+
   const toggleRevisitFlag = async (attemptId: string, needsRevisit: boolean) => {
     try {
       const { error: updErr } = await supabase
@@ -79,6 +78,7 @@ export function useNeedsRevisit(currentUserId?: string): UseNeedsRevisitReturn {
 
       if (updErr) throw updErr;
       await loadSupabaseRevisits();
+      notifyDataChanged();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update revisit flag';
       setError(msg);
@@ -98,6 +98,7 @@ export function useNeedsRevisit(currentUserId?: string): UseNeedsRevisitReturn {
 
       if (updErr) throw updErr;
       await loadSupabaseRevisits();
+      notifyDataChanged();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to mark problem as reviewed';
       setError(msg);

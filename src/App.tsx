@@ -42,6 +42,7 @@ import LeaderboardView from './components/leaderboard/LeaderboardView';
 import NeedsRevisitSection from './components/revisit/NeedsRevisitSection';
 import DuelBanner from './components/duels/DuelBanner';
 import BadgesGrid from './components/badges/BadgesGrid';
+import RecentSolves from './components/solves/RecentSolves';
 
 // Hooks & Data
 import {
@@ -59,6 +60,8 @@ import {
 } from './hooks';
 import { SEED_PROBLEMS } from './data/problemsSeed';
 import { Problem, Attempt } from './data/types';
+import { findCatalogProblem } from './lib/problems';
+import { problemLabel } from './lib/format';
 
 export function App() {
   const location = useLocation();
@@ -87,7 +90,6 @@ export function App() {
     weeklyProgress,
     dualProgress,
     ambientFriend,
-    setPreset,
     updateCustomGoal,
   } = useDailyGoal(currentUserId);
 
@@ -141,8 +143,17 @@ export function App() {
   // Highest unlocked badge
   const topBadge = useMemo(() => {
     const unlocked = allBadges.filter((b) => Boolean(b.unlocked_at));
-    return unlocked[unlocked.length - 1] || allBadges[0];
+    return unlocked[unlocked.length - 1];
   }, [allBadges]);
+
+  // Catalog plus any solved problems outside it (e.g. logged by the extension)
+  const catalogProblems = useMemo<readonly Problem[]>(() => {
+    const extra = new Map<string, Problem>();
+    attempts.forEach((a) => {
+      if (a.problem && !findCatalogProblem(a.problem_id)) extra.set(a.problem_id, a.problem);
+    });
+    return extra.size > 0 ? [...extra.values(), ...SEED_PROBLEMS] : SEED_PROBLEMS;
+  }, [attempts]);
 
   // Modals state
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -211,7 +222,7 @@ export function App() {
     setDiscussionModalState({
       isOpen: true,
       attemptId: attempt?.id,
-      problemTitle: `${problem.frontend_id}. ${problem.title}`,
+      problemTitle: problemLabel(problem),
     });
   };
 
@@ -219,9 +230,7 @@ export function App() {
     setDiscussionModalState({
       isOpen: true,
       attemptId: attempt.id,
-      problemTitle: attempt.problem
-        ? `${attempt.problem.frontend_id}. ${attempt.problem.title}`
-        : 'Problem Discussion',
+      problemTitle: attempt.problem ? problemLabel(attempt.problem) : 'Problem Discussion',
     });
   };
 
@@ -453,12 +462,17 @@ export function App() {
                     onMarkReviewed={markReviewed}
                     onSolveAgain={(prob, att) => handleOpenLogModal(prob, att)}
                   />
-
-                  <StreakCard streak={streak} />
                 </div>
 
                 {/* Right Column: Peer Activity & Live Feeds */}
                 <div className={styles.colRight}>
+                  <RecentSolves
+                    attempts={attempts}
+                    onEditAttempt={(prob, att) => handleOpenLogModal(prob, att)}
+                  />
+
+                  <StreakCard streak={streak} />
+
                   <FriendActivityFeed
                     friendAttempts={friendAttempts}
                     onOpenDiscussion={handleOpenDiscussionFromFeed}
@@ -479,7 +493,7 @@ export function App() {
                 transition={{ duration: 0.18 }}
               >
                 <ProblemList
-                  problems={SEED_PROBLEMS}
+                  problems={catalogProblems}
                   attempts={attempts}
                   onOpenLogModal={handleOpenLogModal}
                   onOpenDiscussion={handleOpenDiscussionFromProblem}
@@ -590,8 +604,8 @@ export function App() {
         currentHardTarget={progress.hard_target}
         currentCadence={cadence}
         currentWeeklyTarget={weeklyProgress.target_count}
-        onSavePreset={setPreset}
         onSaveCustomGoal={updateCustomGoal}
+        onSaved={() => showToast('Practice goal updated.', 'success')}
       />
 
       <LogAttemptModal

@@ -10,6 +10,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .titleArea {
@@ -43,6 +45,8 @@
 }
 
 .countBadge {
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 0.25rem 0.625rem;
   background: rgba(175, 82, 222, 0.15);
   border: 1px solid rgba(175, 82, 222, 0.3);

@@ -86,36 +86,71 @@
     }
   }
 
-  // Flush any pending solves stored in extension queue
+  const SUPABASE_URL = 'https://nhsbgweplsbiodxbdbcc.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B';
+  let isFlushing = false;
+
+  async function postLogSolve(body, bearer) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/log_extension_solve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${bearer}`,
+      },
+      body: JSON.stringify(body),
+    });
+    let json = null;
+    try {
+      json = await res.json();
+    } catch {
+      // Empty body
+    }
+    return { status: res.status, ok: res.ok, json };
+  }
+
+  // Flush solves the LeetCode content script couldn't deliver (offline, etc.)
   function flushPendingSolves(userId, accessToken) {
-    if (!chrome.storage || !chrome.storage.local) return;
+    if (!chrome.storage || !chrome.storage.local || isFlushing) return;
 
     chrome.storage.local.get(['pending_solves'], async (data) => {
-      const pending = data.pending_solves || [];
-      if (!Array.isArray(pending) || pending.length === 0) return;
+      const pending = Array.isArray(data.pending_solves) ? data.pending_solves : [];
+      // Items marked synced (older extension versions queued every solve) were
+      // already recorded; re-sending them would create duplicates.
+      const unsynced = pending.filter((item) => item && item.synced !== true);
+      if (unsynced.length === 0) {
+        if (pending.length > 0) chrome.storage.local.set({ pending_solves: [] });
+        return;
+      }
 
+      isFlushing = true;
       const remaining = [];
+      let delivered = 0;
 
-      for (const item of pending) {
+      for (const item of unsynced) {
+        const body = {
+          p_user_id: userId,
+          p_problem_slug: item.p_problem_slug || item.slug,
+          p_submission_url: item.p_submission_url || item.url || null,
+          p_title: item.p_title || null,
+          p_difficulty: item.p_difficulty || null,
+        };
         try {
-          const res = await fetch(
-            'https://nhsbgweplsbiodxbdbcc.supabase.co/rest/v1/rpc/log_extension_solve',
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                apikey: 'sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B',
-                Authorization: `Bearer ${accessToken || 'sb_publishable_VoDVFwrmAavSi6FxXV0BHA_wwX-Zm9B'}`,
-              },
-              body: JSON.stringify({
-                p_user_id: userId,
-                p_problem_slug: item.slug,
-                p_submission_url: item.url || null,
-              }),
-            }
-          );
-
-          if (!res.ok) {
+          let bearer = accessToken || SUPABASE_KEY;
+          let res = await postLogSolve(body, bearer);
+          if (res.status === 401 && bearer !== SUPABASE_KEY) {
+            bearer = SUPABASE_KEY;
+            res = await postLogSolve(body, bearer);
+          }
+          if (!res.ok && res.json && res.json.code === 'PGRST202') {
+            res = await postLogSolve(
+              { p_user_id: body.p_user_id, p_problem_slug: body.p_problem_slug, p_submission_url: body.p_submission_url },
+              bearer
+            );
+          }
+          if (res.ok && res.json && res.json.success) {
+            delivered++;
+          } else {
             remaining.push(item);
           }
         } catch {
@@ -123,7 +158,14 @@
         }
       }
 
-      chrome.storage.local.set({ pending_solves: remaining });
+      chrome.storage.local.set({ pending_solves: remaining }, () => {
+        isFlushing = false;
+      });
+
+      if (delivered > 0) {
+        // Let the dashboard reload so the synced solves show up immediately.
+        window.postMessage({ type: 'RECURSE_SOLVES_SYNCED', count: delivered }, window.location.origin);
+      }
     });
   }
 
@@ -132,7 +174,7 @@
     window.__RECURSE_EXTENSION_AVAILABLE__ = true;
     window.dispatchEvent(
       new CustomEvent('recurse:extension-ready', {
-        detail: { version: '1.1.0' },
+        detail: { version: '1.2.0' },
       })
     );
   }

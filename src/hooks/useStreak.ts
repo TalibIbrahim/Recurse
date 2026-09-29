@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Streak, HeatmapData, HeatmapCell, ProblemDifficulty } from '../data/types';
-import { SEED_PROBLEMS } from '../data/problemsSeed';
+import { hydrateAttempts, localDateKey, effectiveStreak, startOfLocalWeekIso } from '../lib/problems';
+import { useDataRefresh } from '../lib/dataSync';
 
 export interface UseStreakReturn {
   readonly streak: Streak | null;
@@ -33,7 +34,6 @@ export function useStreak(currentUserId?: string): UseStreakReturn {
     }
 
     try {
-      setLoading(true);
       setError(null);
 
       // 1. Fetch streak row
@@ -45,10 +45,42 @@ export function useStreak(currentUserId?: string): UseStreakReturn {
 
       if (streakErr) throw streakErr;
 
+      // 2. Fetch solved attempts
+      const { data: attemptsRows, error: attErr } = await supabase
+        .from('attempts')
+        .select('*')
+        .eq('user_id', currentUserId)
+        .eq('status', 'solved');
+
+      if (attErr) throw attErr;
+
+      const solves = hydrateAttempts(attemptsRows).map((a) => ({
+        date: localDateKey(a.solved_at),
+        problemId: a.problem_id,
+        title: a.problem!.title,
+        difficulty: a.problem!.difficulty,
+      }));
+      const solvedToday = solves.some((s) => s.date === localDateKey());
+
       if (streakRow) {
-        setStreak(streakRow as Streak);
+        const row = streakRow as Partial<Streak> & { current_streak: number; longest_streak: number };
+        const current = effectiveStreak(row.current_streak, row.last_active_date);
+        setStreak({
+          user_id: currentUserId,
+          current_streak: current,
+          longest_streak: Math.max(row.longest_streak ?? 0, current),
+          last_active_date: row.last_active_date ?? null,
+          freezes_available: row.freezes_available ?? 2,
+          freezes_used: row.freezes_used ?? 0,
+          last_freeze_date: row.last_freeze_date ?? null,
+          is_at_risk: current > 0 && !solvedToday,
+          updated_at: row.updated_at ?? new Date().toISOString(),
+        });
       } else {
-        const initialStreak: Streak = {
+        await supabase
+          .from('streaks')
+          .upsert({ user_id: currentUserId, current_streak: 0, longest_streak: 0 });
+        setStreak({
           user_id: currentUserId,
           current_streak: 0,
           longest_streak: 0,
@@ -57,36 +89,8 @@ export function useStreak(currentUserId?: string): UseStreakReturn {
           is_at_risk: false,
           last_active_date: null,
           updated_at: new Date().toISOString(),
-        };
-        await supabase.from('streaks').upsert(initialStreak);
-        setStreak(initialStreak);
+        });
       }
-
-      // 2. Fetch solved attempts
-      const { data: attemptsRows, error: attErr } = await supabase
-        .from('attempts')
-        .select('problem_id, solved_at, problems(title, difficulty)')
-        .eq('user_id', currentUserId)
-        .eq('status', 'solved');
-
-      if (attErr) throw attErr;
-
-      const probMap = new Map(SEED_PROBLEMS.map((p) => [p.id, p]));
-      const slugMap = new Map(SEED_PROBLEMS.map((p) => [p.leetcode_slug, p]));
-      const solves = (attemptsRows || []).map((row: unknown) => {
-        const r = row as {
-          problem_id: string;
-          solved_at: string;
-          problems?: { title: string; difficulty: ProblemDifficulty };
-        };
-        const fallbackProb = probMap.get(r.problem_id) || slugMap.get(r.problem_id);
-        return {
-          date: r.solved_at.split('T')[0],
-          problemId: r.problem_id,
-          title: r.problems?.title || fallbackProb?.title || 'Problem',
-          difficulty: r.problems?.difficulty || fallbackProb?.difficulty || 'Medium',
-        };
-      });
 
       setRawSolves(solves);
     } catch (err: unknown) {
@@ -118,6 +122,8 @@ export function useStreak(currentUserId?: string): UseStreakReturn {
     }
   }, [currentUserId, loadSupabaseStreakAndSolves]);
 
+  useDataRefresh(loadSupabaseStreakAndSolves, Boolean(currentUserId));
+
   // Construct 52-week heatmap data from solves
   const heatmapData = useMemo<HeatmapData>(() => {
     const solvesByDate = new Map<
@@ -136,17 +142,19 @@ export function useStreak(currentUserId?: string): UseStreakReturn {
       solvesByDate.set(s.date, existing);
     });
 
+    // 52 Monday-to-Sunday columns ending with the current week, so each row is a
+    // fixed weekday. Days after today are included (as empty) to keep rows aligned.
     const weeks: { week_index: number; days: HeatmapCell[] }[] = [];
-    const today = new Date();
+    const firstMonday = new Date(startOfLocalWeekIso());
+    firstMonday.setDate(firstMonday.getDate() - 51 * 7);
     let totalSolvesInPeriod = 0;
 
     for (let w = 0; w < 52; w++) {
       const days: HeatmapCell[] = [];
       for (let d = 0; d < 7; d++) {
-        const dayOffset = (51 - w) * 7 + (6 - d);
-        const dateObj = new Date(today);
-        dateObj.setDate(dateObj.getDate() - dayOffset);
-        const dateStr = dateObj.toISOString().split('T')[0];
+        const dateObj = new Date(firstMonday);
+        dateObj.setDate(firstMonday.getDate() + w * 7 + d);
+        const dateStr = localDateKey(dateObj);
 
         const entry = solvesByDate.get(dateStr);
         const count = entry ? entry.count : 0;

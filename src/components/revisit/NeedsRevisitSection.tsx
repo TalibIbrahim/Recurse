@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { RefreshCw, CheckCircle2, RotateCcw, AlertTriangle, ArrowRight } from 'lucide-react';
+import { formatRelativeTime, problemLabel } from '../../lib/format';
 import styles from './NeedsRevisitSection.module.css';
 import GlassCard from '../ui/GlassCard';
 import { Attempt, Problem } from '../../data/types';
@@ -10,15 +11,6 @@ export interface NeedsRevisitSectionProps {
   revisitProblems: readonly Attempt[];
   onMarkReviewed: (attemptId: string) => Promise<void>;
   onSolveAgain: (problem: Problem, attempt: Attempt) => void;
-}
-
-function calculateDaysAgo(isoDate: string): number {
-  try {
-    const diffMs = Date.now() - new Date(isoDate).getTime();
-    return Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-  } catch {
-    return 1;
-  }
 }
 
 export const NeedsRevisitSection: React.FC<NeedsRevisitSectionProps> = ({
@@ -54,7 +46,6 @@ export const NeedsRevisitSection: React.FC<NeedsRevisitSectionProps> = ({
             const prob = att.problem;
             if (!prob) return null;
 
-            const daysAgo = calculateDaysAgo(att.solved_at);
             const diffClass =
               prob.difficulty === 'Easy'
                 ? styles.diffEasy
@@ -67,13 +58,13 @@ export const NeedsRevisitSection: React.FC<NeedsRevisitSectionProps> = ({
                 <div>
                   <div className={styles.cardTop}>
                     <h4 className={styles.cardTitle}>
-                      #{prob.frontend_id} {prob.title}
+                      {problemLabel(prob)}
                     </h4>
                   </div>
                   <div className={styles.cardMeta}>
                     <span className={diffClass}>{prob.difficulty}</span>
                     <span>•</span>
-                    <span className="text-label-tertiary">Solved {daysAgo}d ago</span>
+                    <span className="text-label-tertiary">Solved {formatRelativeTime(att.solved_at)}</span>
                     {att.pattern_tag && (
                       <>
                         <span>•</span>

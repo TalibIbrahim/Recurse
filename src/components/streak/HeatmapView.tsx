@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { Calendar, Activity, Info } from 'lucide-react';
 import styles from './HeatmapView.module.css';
 import GlassCard from '../ui/GlassCard';
 import { HeatmapData, HeatmapCell } from '../../data/types';
+import { localDateKey } from '../../lib/problems';
 
 export interface HeatmapViewProps {
   heatmapData: HeatmapData;
@@ -12,9 +13,25 @@ export interface HeatmapViewProps {
 
 export const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData }) => {
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const todayKey = localDateKey();
 
-  // Month labels helper
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // Start scrolled to the most recent weeks on narrow screens.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [heatmapData.weeks.length]);
+
+  // Label each column where a new month begins (skipping a partial first month).
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthMarkers: { label: string; weekIndex: number }[] = [];
+  heatmapData.weeks.forEach((week, idx) => {
+    const month = new Date(`${week.days[0].date}T00:00:00`).getMonth();
+    const prev = idx > 0 ? new Date(`${heatmapData.weeks[idx - 1].days[0].date}T00:00:00`).getMonth() : -1;
+    if (month !== prev && (idx > 0 || new Date(`${week.days[0].date}T00:00:00`).getDate() <= 7)) {
+      monthMarkers.push({ label: MONTHS[month], weekIndex: idx });
+    }
+  });
 
   // Helper for cell level style
   const getLevelClass = (level: number) => {
@@ -59,13 +76,17 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData }) => {
       </div>
 
       {/* Horizontal Scrollable Calendar Table */}
-      <div className={styles.scrollArea}>
+      <div className={styles.scrollArea} ref={scrollRef}>
         <div className={styles.heatmapTable}>
           {/* Months Header Row */}
           <div className={styles.monthsRow}>
-            {months.map((m, idx) => (
-              <span key={m} className={styles.monthLabel} style={{ width: '4.2rem' }}>
-                {m}
+            {monthMarkers.map((m) => (
+              <span
+                key={`${m.label}-${m.weekIndex}`}
+                className={styles.monthLabel}
+                style={{ left: `calc(2rem + ${m.weekIndex * 14}px)` }}
+              >
+                {m.label}
               </span>
             ))}
           </div>
@@ -74,8 +95,12 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData }) => {
             {/* Day of Week Labels */}
             <div className={styles.daysColumn}>
               <span>Mon</span>
+              <span />
               <span>Wed</span>
+              <span />
               <span>Fri</span>
+              <span />
+              <span />
             </div>
 
             {/* Weeks Columns */}
@@ -85,7 +110,9 @@ export const HeatmapView: React.FC<HeatmapViewProps> = ({ heatmapData }) => {
                   {week.days.map((day) => (
                     <div
                       key={day.date}
-                      className={`${styles.cell} ${getLevelClass(day.level)}`}
+                      className={`${styles.cell} ${getLevelClass(day.level)} ${
+                        day.date > todayKey ? styles.cellFuture : ''
+                      }`}
                       onMouseEnter={() => setHoveredCell(day)}
                       onMouseLeave={() => setHoveredCell(null)}
                       title={`${day.date}: ${day.count} solves`}

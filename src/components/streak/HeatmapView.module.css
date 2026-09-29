@@ -78,6 +78,8 @@
 }
 
 .monthsRow {
+  position: relative;
+  height: 1rem;
   display: flex;
   padding-left: 2rem;
   font-size: 0.6875rem;
@@ -87,6 +89,8 @@
 }
 
 .monthLabel {
+  position: absolute;
+  top: 0;
   flex-shrink: 0;
   overflow: visible;
   white-space: nowrap;
@@ -100,9 +104,8 @@
 .daysColumn {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 3px;
   width: 1.5rem;
-  height: 98px;
   font-size: 0.625rem;
   font-weight: 600;
   color: var(--label-tertiary);
@@ -192,4 +195,13 @@
   pointer-events: none;
   white-space: nowrap;
   z-index: 20;
+}
+
+.daysColumn span {
+  height: 11px;
+  line-height: 11px;
+}
+
+.cellFuture {
+  visibility: hidden;
 }

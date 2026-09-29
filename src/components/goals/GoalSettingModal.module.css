@@ -22,6 +22,9 @@
   border-radius: 20px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
   padding: 1.75rem;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .sheenTop {
@@ -281,4 +284,15 @@
 .cadenceDesc {
   font-size: 0.6875rem;
   color: var(--label-tertiary);
+}
+
+.errorText {
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 69, 58, 0.35);
+  background: rgba(255, 69, 58, 0.1);
+  color: #FF6961;
+  font-size: 0.8125rem;
+  line-height: 1.4;
 }

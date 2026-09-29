@@ -16,14 +16,15 @@ export interface GoalSettingModalProps {
   currentHardTarget: number;
   currentCadence?: GoalCadence;
   currentWeeklyTarget?: number;
-  onSavePreset: (preset: GoalPresetType) => Promise<void>;
   onSaveCustomGoal: (
     easy: number,
     medium: number,
     hard: number,
     weeklyTarget?: number,
-    cadence?: GoalCadence
-  ) => Promise<void>;
+    cadence?: GoalCadence,
+    preset?: GoalPresetType
+  ) => Promise<{ success: boolean; error?: string }>;
+  onSaved?: () => void;
 }
 
 export const GoalSettingModal: React.FC<GoalSettingModalProps> = ({
@@ -35,8 +36,8 @@ export const GoalSettingModal: React.FC<GoalSettingModalProps> = ({
   currentHardTarget,
   currentCadence = 'both',
   currentWeeklyTarget = 10,
-  onSavePreset,
   onSaveCustomGoal,
+  onSaved,
 }) => {
   const [selectedPreset, setSelectedPreset] = useState<GoalPresetType>(currentPreset);
   const [easyTarget, setEasyTarget] = useState(currentEasyTarget);
@@ -45,6 +46,7 @@ export const GoalSettingModal: React.FC<GoalSettingModalProps> = ({
   const [cadence, setCadence] = useState<GoalCadence>(currentCadence);
   const [weeklyTarget, setWeeklyTarget] = useState(currentWeeklyTarget);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -54,6 +56,7 @@ export const GoalSettingModal: React.FC<GoalSettingModalProps> = ({
       setHardTarget(currentHardTarget);
       setCadence(currentCadence);
       setWeeklyTarget(currentWeeklyTarget);
+      setSaveError(null);
     }
   }, [
     isOpen,
@@ -88,10 +91,29 @@ export const GoalSettingModal: React.FC<GoalSettingModalProps> = ({
   };
 
   const handleSave = async () => {
+    if (cadence !== 'weekly' && easyTarget + mediumTarget + hardTarget === 0) {
+      setSaveError('Set at least one daily target, or switch to Weekly Only.');
+      return;
+    }
     setIsSubmitting(true);
+    setSaveError(null);
     try {
-      await onSaveCustomGoal(easyTarget, mediumTarget, hardTarget, weeklyTarget, cadence);
-      onClose();
+      const result = await onSaveCustomGoal(
+        easyTarget,
+        mediumTarget,
+        hardTarget,
+        weeklyTarget,
+        cadence,
+        selectedPreset
+      );
+      if (result.success) {
+        onSaved?.();
+        onClose();
+      } else {
+        setSaveError(result.error || 'Could not save your goal. Please try again.');
+      }
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save your goal. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -312,6 +334,12 @@ export const GoalSettingModal: React.FC<GoalSettingModalProps> = ({
                 </div>
               </div>
             </>
+          )}
+
+          {saveError && (
+            <p className={styles.errorText} role="alert">
+              {saveError}
+            </p>
           )}
 
           <div className={styles.actionsRow}>

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Recurse - LeetCode Solve Sync",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Automatically track and sync accepted LeetCode solves with Recurse peer accountability and streak tracking.",
   "permissions": [
     "storage",

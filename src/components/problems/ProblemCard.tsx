@@ -47,7 +47,9 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({
         <div>
           <div className={styles.topRow}>
             <div className={styles.metaInfo}>
-              <span className={styles.idBadge}>#{problem.frontend_id}</span>
+              {problem.frontend_id > 0 && (
+                <span className={styles.idBadge}>#{problem.frontend_id}</span>
+              )}
               <span
                 className={`${styles.diffBadge} ${
                   problem.difficulty === 'Easy'

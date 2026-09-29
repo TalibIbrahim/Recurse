@@ -55,6 +55,7 @@ export const LogAttemptModal: React.FC<LogAttemptModalProps> = ({
   const [needsRevisit, setNeedsRevisit] = useState(false);
   const [confidenceRating, setConfidenceRating] = useState<1 | 2 | 3 | 4 | 5>(4);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Attempt Stopwatch / Timer State
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
@@ -88,6 +89,7 @@ export const LogAttemptModal: React.FC<LogAttemptModalProps> = ({
         setConfidenceRating(4);
       }
       setIsTimerRunning(false);
+      setSaveError(null);
     }
   }, [isOpen, problem, existingAttempt]);
 
@@ -146,13 +148,16 @@ export const LogAttemptModal: React.FC<LogAttemptModalProps> = ({
       confidence_rating: status === 'solved' ? confidenceRating : undefined,
     };
 
+    setSaveError(null);
     try {
-      if (existingAttempt) {
-        await onUpdateAttempt(existingAttempt.id, inputData);
+      const result = existingAttempt
+        ? await onUpdateAttempt(existingAttempt.id, inputData)
+        : await onSaveAttempt(inputData);
+      if (result.success) {
+        onClose();
       } else {
-        await onSaveAttempt(inputData);
+        setSaveError(result.error || 'Could not save this attempt. Please try again.');
       }
-      onClose();
     } finally {
       setIsSubmitting(false);
     }
@@ -163,8 +168,12 @@ export const LogAttemptModal: React.FC<LogAttemptModalProps> = ({
     if (window.confirm('Are you sure you want to delete this attempt record?')) {
       setIsSubmitting(true);
       try {
-        await onDeleteAttempt(existingAttempt.id);
-        onClose();
+        const result = await onDeleteAttempt(existingAttempt.id);
+        if (result.success) {
+          onClose();
+        } else {
+          setSaveError(result.error || 'Could not delete this attempt.');
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -188,8 +197,12 @@ export const LogAttemptModal: React.FC<LogAttemptModalProps> = ({
           <div className={styles.modalHeader}>
             <div className={styles.titleArea}>
               <div className={styles.problemBadgeLine}>
-                <span>#{problem.frontend_id}</span>
-                <span>•</span>
+                {problem.frontend_id > 0 && (
+                  <>
+                    <span>#{problem.frontend_id}</span>
+                    <span>•</span>
+                  </>
+                )}
                 <span>{problem.difficulty}</span>
               </div>
               <h2 className={styles.title}>{problem.title}</h2>
@@ -437,6 +450,12 @@ export const LogAttemptModal: React.FC<LogAttemptModalProps> = ({
                 </span>
               </div>
             </label>
+
+            {saveError && (
+              <p className={styles.errorText} role="alert">
+                {saveError}
+              </p>
+            )}
 
             {/* Action Buttons */}
             <div className={styles.actionRow}>

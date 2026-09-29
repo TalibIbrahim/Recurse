@@ -295,3 +295,11 @@
   font-weight: 800;
   color: var(--accent-blue);
 }
+
+/* Phones: drop the breakdown column so Streak and Points stay visible. */
+@media (max-width: 600px) {
+  .leaderboardTable th:nth-child(3),
+  .leaderboardTable td:nth-child(3) {
+    display: none;
+  }
+}

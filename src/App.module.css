@@ -215,6 +215,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
   gap: 1.25rem;
   margin-bottom: 0.5rem;
   font-weight: 500;
@@ -230,3 +232,22 @@
   color: var(--label-primary);
 }
 
+
+/* Phone overrides — placed last so they win over the base .bannerCard rule. */
+@media (max-width: 639px) {
+  .bannerCard {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.875rem;
+    gap: 0.625rem;
+  }
+  .bannerValue {
+    font-size: 1.125rem;
+  }
+  .footerLinks {
+    gap: 0.75rem;
+  }
+  .footerLinks span {
+    display: none;
+  }
+}

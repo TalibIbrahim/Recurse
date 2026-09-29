@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Attempt, LogAttemptInput } from '../data/types';
+import { hydrateAttempts, hydrateAttempt } from '../lib/problems';
+import { notifyDataChanged, useDataRefresh, writeWithColumnFallback } from '../lib/dataSync';
+
+// Problems are resolved client-side (attempts.problem_id has no FK to problems).
+const ATTEMPT_SELECT = '*, user:profiles(*)';
 
 export interface UseAttemptsReturn {
   readonly attempts: readonly Attempt[];
@@ -34,17 +39,12 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     }
 
     try {
-      setLoading(true);
       setError(null);
 
       // 1. Fetch own attempts
       const { data: ownData, error: ownErr } = await supabase
         .from('attempts')
-        .select(`
-          *,
-          problem:problems(*),
-          user:profiles(*)
-        `)
+        .select(ATTEMPT_SELECT)
         .eq('user_id', currentUserId)
         .order('solved_at', { ascending: false });
 
@@ -53,19 +53,15 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
       // 2. Fetch friends' attempts (RLS allows select if friendship is accepted)
       const { data: friendData, error: friendErr } = await supabase
         .from('attempts')
-        .select(`
-          *,
-          problem:problems(*),
-          user:profiles(*)
-        `)
+        .select(ATTEMPT_SELECT)
         .neq('user_id', currentUserId)
         .order('solved_at', { ascending: false })
         .limit(30);
 
       if (friendErr) throw friendErr;
 
-      setAttempts((ownData as Attempt[]) || []);
-      setFriendAttempts((friendData as Attempt[]) || []);
+      setAttempts(hydrateAttempts(ownData));
+      setFriendAttempts(hydrateAttempts(friendData));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error fetching attempts';
       setError(msg);
@@ -95,6 +91,8 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     }
   }, [loadSupabaseAttempts, currentUserId]);
 
+  useDataRefresh(loadSupabaseAttempts, Boolean(currentUserId));
+
   const logAttempt = async (
     input: LogAttemptInput
   ): Promise<{ success: boolean; attempt?: Attempt; error?: string }> => {
@@ -103,9 +101,9 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     }
 
     try {
-      const { data, error: insertErr } = await supabase
-        .from('attempts')
-        .insert({
+      const needsRevisit = input.needs_revisit ?? input.status === 'needs_review';
+      const { data, error: insertErr } = await writeWithColumnFallback(
+        {
           user_id: currentUserId,
           problem_id: input.problem_id,
           status: input.status,
@@ -115,19 +113,19 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
           pattern_tag: input.pattern_tag,
           time_complexity: input.time_complexity,
           space_complexity: input.space_complexity,
+          submission_url: input.submission_url,
+          needs_revisit: needsRevisit,
+          revisit_by: needsRevisit ? new Date(Date.now() + 3 * 86400000).toISOString() : null,
           solved_at: new Date().toISOString(),
-        })
-        .select(`
-          *,
-          problem:problems(*),
-          user:profiles(*)
-        `)
-        .single();
+        },
+        (body) => supabase.from('attempts').insert(body).select(ATTEMPT_SELECT).single()
+      );
 
       if (insertErr) throw insertErr;
 
       await loadSupabaseAttempts();
-      return { success: true, attempt: data as Attempt };
+      notifyDataChanged();
+      return { success: true, attempt: hydrateAttempt(data) };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to save attempt';
       return { success: false, error: msg };
@@ -139,14 +137,14 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
     updates: Partial<LogAttemptInput>
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { error: updErr } = await supabase
-        .from('attempts')
-        .update(updates)
-        .eq('id', attemptId);
+      const { error: updErr } = await writeWithColumnFallback({ ...updates }, (body) =>
+        supabase.from('attempts').update(body).eq('id', attemptId)
+      );
 
       if (updErr) throw updErr;
 
       await loadSupabaseAttempts();
+      notifyDataChanged();
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update attempt';
@@ -166,6 +164,7 @@ export function useAttempts(currentUserId?: string): UseAttemptsReturn {
       if (delErr) throw delErr;
 
       await loadSupabaseAttempts();
+      notifyDataChanged();
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete attempt';

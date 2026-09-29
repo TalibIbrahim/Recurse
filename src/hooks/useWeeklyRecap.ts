@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { WeeklyRecap } from '../data/types';
 import { supabase } from '../lib/supabase';
+import { hydrateAttempts, effectiveStreak, localDateKey, DIFFICULTY_POINTS } from '../lib/problems';
+import { useDataRefresh } from '../lib/dataSync';
+
+const CORE_TAGS = ['Dynamic Programming', 'Graph', 'Tree', 'Binary Search', 'Sliding Window'];
 
 export interface UseWeeklyRecapReturn {
   readonly recap: WeeklyRecap | null;
@@ -30,7 +34,6 @@ export function useWeeklyRecap(currentUserId?: string): UseWeeklyRecapReturn {
     }
 
     try {
-      setLoading(true);
       setError(null);
 
       // Calculate start of current week (Monday 00:00:00)
@@ -42,43 +45,89 @@ export function useWeeklyRecap(currentUserId?: string): UseWeeklyRecapReturn {
       monday.setHours(0, 0, 0, 0);
       const mondayIso = monday.toISOString();
 
-      const { data: weekSolves, error: solveErr } = await supabase
+      // Own attempts this week (all statuses, for weak-spot detection)
+      const { data: weekRows, error: solveErr } = await supabase
         .from('attempts')
-        .select('*, problem:problems(*)')
+        .select('*')
         .eq('user_id', currentUserId)
-        .eq('status', 'solved')
         .gte('solved_at', mondayIso);
 
       if (solveErr) throw solveErr;
 
-      const solves = weekSolves || [];
-      const totalPoints = solves.reduce((sum, a) => {
-        const diff = a.problem?.difficulty;
-        const pts = diff === 'Hard' ? 5 : diff === 'Medium' ? 3 : 1;
-        return sum + pts;
-      }, 0);
+      const weekAttempts = hydrateAttempts(weekRows);
+      const solves = weekAttempts.filter((a) => a.status === 'solved');
 
-      const easyCount = solves.filter((s) => s.problem?.difficulty === 'Easy').length;
-      const medCount = solves.filter((s) => s.problem?.difficulty === 'Medium').length;
-      const hardCount = solves.filter((s) => s.problem?.difficulty === 'Hard').length;
+      const easyCount = solves.filter((s) => s.problem!.difficulty === 'Easy').length;
+      const medCount = solves.filter((s) => s.problem!.difficulty === 'Medium').length;
+      const hardCount = solves.filter((s) => s.problem!.difficulty === 'Hard').length;
+      const totalPoints = solves.reduce((sum, a) => sum + DIFFICULTY_POINTS[a.problem!.difficulty], 0);
       const sundayDate = new Date(monday.getTime() + 6 * 86400000);
 
+      const tagCounts = new Map<string, number>();
+      solves.forEach((a) => a.problem!.tags.forEach((t) => tagCounts.set(t, (tagCounts.get(t) || 0) + 1)));
+      let strongestTag: string | null = null;
+      tagCounts.forEach((count, tag) => {
+        if (!strongestTag || count > (tagCounts.get(strongestTag) || 0)) strongestTag = tag;
+      });
+
+      const struggled = weekAttempts.find(
+        (a) =>
+          (a.needs_revisit || a.status === 'needs_review' || (a.confidence_rating ?? 5) <= 2) &&
+          a.problem!.tags.length > 0
+      );
+      const weakestTag = struggled?.problem!.tags[0] ?? CORE_TAGS.find((t) => !tagCounts.has(t)) ?? null;
+
+      // Streak
+      const { data: streakRow } = await supabase
+        .from('streaks')
+        .select('current_streak, last_active_date')
+        .eq('user_id', currentUserId)
+        .maybeSingle();
+
+      // Friends' solves this week (RLS only exposes accepted friends' attempts)
+      const { data: friendRows } = await supabase
+        .from('attempts')
+        .select('user_id, user:profiles(full_name, username)')
+        .neq('user_id', currentUserId)
+        .eq('status', 'solved')
+        .gte('solved_at', mondayIso);
+
+      const friendTotals = new Map<string, { count: number; name: string | null }>();
+      (friendRows || []).forEach((row: unknown) => {
+        const r = row as { user_id: string; user?: { full_name?: string; username?: string } | null };
+        const entry = friendTotals.get(r.user_id) || {
+          count: 0,
+          name: r.user?.full_name || r.user?.username || null,
+        };
+        entry.count += 1;
+        friendTotals.set(r.user_id, entry);
+      });
+      const friendCounts = Array.from(friendTotals.values());
+      const friendAverage =
+        friendCounts.length > 0
+          ? Math.round((friendCounts.reduce((s, f) => s + f.count, 0) / friendCounts.length) * 10) / 10
+          : 0;
+      const topFriend = friendCounts.sort((a, b) => b.count - a.count)[0];
+      const peersBehind = friendCounts.filter((f) => f.count < solves.length).length;
+      const percentile =
+        friendCounts.length > 0 ? Math.round((peersBehind / friendCounts.length) * 100) : 100;
+
       const generatedRecap: WeeklyRecap = {
-        week_start: mondayIso.split('T')[0],
-        week_end: sundayDate.toISOString().split('T')[0],
+        week_start: localDateKey(monday),
+        week_end: localDateKey(sundayDate),
         total_solves: solves.length,
         easy_solves: easyCount,
         medium_solves: medCount,
         hard_solves: hardCount,
         points_earned: totalPoints,
-        current_streak: 0,
-        strongest_tag: solves.length > 0 ? solves[0].problem?.tags?.[0] || 'Arrays' : 'Arrays',
-        weakest_tag: 'Dynamic Programming',
+        current_streak: effectiveStreak(streakRow?.current_streak, streakRow?.last_active_date),
+        strongest_tag: strongestTag,
+        weakest_tag: weakestTag,
         friend_comparison: {
           user_solves: solves.length,
-          friend_average_solves: 0,
-          top_friend_name: null,
-          user_percentile: 100,
+          friend_average_solves: friendAverage,
+          top_friend_name: topFriend?.name ?? null,
+          user_percentile: percentile,
         },
       };
 
@@ -94,6 +143,8 @@ export function useWeeklyRecap(currentUserId?: string): UseWeeklyRecapReturn {
   useEffect(() => {
     loadRecap();
   }, [loadRecap]);
+
+  useDataRefresh(loadRecap, Boolean(currentUserId));
 
   const weakestTag = useMemo<string | null>(() => {
     return recap?.weakest_tag || null;

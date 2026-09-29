@@ -5,28 +5,11 @@ import { Activity, Clock, MessageSquare, CheckCircle2, Award } from 'lucide-reac
 import styles from './FriendActivityFeed.module.css';
 import GlassCard from '../ui/GlassCard';
 import { Attempt } from '../../data/types';
+import { formatRelativeTime, problemLabel } from '../../lib/format';
 
 export interface FriendActivityFeedProps {
   friendAttempts: readonly Attempt[];
   onOpenDiscussion: (attempt: Attempt) => void;
-}
-
-function formatRelativeTime(isoString: string): string {
-  try {
-    const diffMs = Date.now() - new Date(isoString).getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    if (diffHours < 1) {
-      const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-      return `${diffMins}m ago`;
-    }
-    if (diffHours < 24) {
-      return `${diffHours}h ago`;
-    }
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
-  } catch {
-    return 'Recent';
-  }
 }
 
 export const FriendActivityFeed: React.FC<FriendActivityFeedProps> = ({
@@ -79,9 +62,7 @@ export const FriendActivityFeed: React.FC<FriendActivityFeedProps> = ({
                   {problem && (
                     <div className={styles.problemBadge}>
                       <span className={diffClass}>[{problem.difficulty}]</span>
-                      <span>
-                        #{problem.frontend_id} {problem.title}
-                      </span>
+                      <span>{problemLabel(problem)}</span>
                     </div>
                   )}
 
@@ -92,7 +73,7 @@ export const FriendActivityFeed: React.FC<FriendActivityFeedProps> = ({
                   <div className={styles.metaTagsRow}>
                     {att.pattern_tag && <span>Pattern: {att.pattern_tag}</span>}
                     {att.time_complexity && <span>Time: {att.time_complexity}</span>}
-                    {att.time_spent_min && (
+                    {att.time_spent_min != null && att.time_spent_min > 0 && (
                       <span className="flex items-center gap-1">
                         <Clock size={12} /> {att.time_spent_min} min
                       </span>
@@ -115,7 +96,7 @@ export const FriendActivityFeed: React.FC<FriendActivityFeedProps> = ({
       ) : (
         <div className={styles.emptyFeed}>
           <Award size={32} />
-          <span>No peer activity yet today. Be the first to log a solve!</span>
+          <span>No peer activity yet. Add friends to see their solves here.</span>
         </div>
       )}
     </GlassCard>

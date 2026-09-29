@@ -172,6 +172,7 @@ export interface Attempt {
   readonly confidence_rating?: 1 | 2 | 3 | 4 | 5;
   readonly created_at: string;
   readonly updated_at: string;
+  readonly logged_via_extension?: boolean; // Auto-detected by the browser extension
   readonly problem?: Problem;
   readonly user?: Profile;
 }

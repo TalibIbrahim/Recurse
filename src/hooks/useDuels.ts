@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Duel } from '../data/types';
+import { resolveProblem } from '../lib/problems';
+
+const withProblem = (row: unknown): Duel => {
+  const duel = row as Duel;
+  return { ...duel, problem: resolveProblem(duel.problem_id) };
+};
 
 export interface UseDuelsReturn {
   readonly duels: readonly Duel[];
@@ -43,7 +49,6 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
         .from('duels')
         .select(`
           *,
-          problem:problems(*),
           challenger:profiles!duels_challenger_id_fkey(*),
           opponent:profiles!duels_opponent_id_fkey(*)
         `)
@@ -52,7 +57,7 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
 
       if (fetchErr) throw fetchErr;
 
-      setDuels((data as Duel[]) || []);
+      setDuels((data || []).map(withProblem));
     } catch {
       setDuels([]);
     } finally {
@@ -101,7 +106,6 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
         })
         .select(`
           *,
-          problem:problems(*),
           challenger:profiles!duels_challenger_id_fkey(*),
           opponent:profiles!duels_opponent_id_fkey(*)
         `)
@@ -109,7 +113,7 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
 
       if (insertErr) throw insertErr;
       await loadSupabaseDuels();
-      return { success: true, duel: data as Duel };
+      return { success: true, duel: withProblem(data) };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create challenge';
       return { success: false, error: msg };
@@ -125,12 +129,11 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
         .from('duels')
         .update({
           status: 'active',
-          started_at: nowIso,
+          start_time: nowIso,
         })
         .eq('id', duelId)
         .select(`
           *,
-          problem:problems(*),
           challenger:profiles!duels_challenger_id_fkey(*),
           opponent:profiles!duels_opponent_id_fkey(*)
         `)
@@ -138,7 +141,7 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
 
       if (updateErr) throw updateErr;
       await loadSupabaseDuels();
-      return { success: true, duel: data as Duel };
+      return { success: true, duel: withProblem(data) };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to accept duel';
       return { success: false, error: msg };
@@ -186,7 +189,6 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
         .eq('id', duelId)
         .select(`
           *,
-          problem:problems(*),
           challenger:profiles!duels_challenger_id_fkey(*),
           opponent:profiles!duels_opponent_id_fkey(*)
         `)
@@ -194,7 +196,7 @@ export function useDuels(currentUserId?: string): UseDuelsReturn {
 
       if (updErr) throw updErr;
       await loadSupabaseDuels();
-      return { success: true, duel: data as Duel };
+      return { success: true, duel: withProblem(data) };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to submit solve';
       return { success: false, error: msg };

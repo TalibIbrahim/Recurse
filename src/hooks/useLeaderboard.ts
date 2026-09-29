@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { LeaderboardUser, LeaderboardTimeframe, Profile, ProblemDifficulty } from '../data/types';
+import { LeaderboardUser, LeaderboardTimeframe, Profile } from '../data/types';
+import { hydrateAttempts, effectiveStreak, startOfLocalDayIso, startOfLocalWeekIso, DIFFICULTY_POINTS } from '../lib/problems';
+import { useDataRefresh } from '../lib/dataSync';
 
 export interface UseLeaderboardReturn {
   readonly leaderboard: readonly LeaderboardUser[];
@@ -25,7 +27,6 @@ export function useLeaderboard(currentUserId?: string): UseLeaderboardReturn {
     }
 
     try {
-      setLoading(true);
       setError(null);
 
       // 1. Fetch user + friend profiles
@@ -77,30 +78,17 @@ export function useLeaderboard(currentUserId?: string): UseLeaderboardReturn {
       }
 
       // Filter cutoff
-      const now = new Date();
       let cutoffIso: string | null = null;
       if (timeframe === 'today') {
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        cutoffIso = today.toISOString();
+        cutoffIso = startOfLocalDayIso();
       } else if (timeframe === 'week') {
-        const dayOfWeek = now.getDay();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-        startOfWeek.setHours(0, 0, 0, 0);
-        cutoffIso = startOfWeek.toISOString();
+        cutoffIso = startOfLocalWeekIso();
       }
 
       // 2. Fetch attempts for all participants
       let attemptsQuery = supabase
         .from('attempts')
-        .select(`
-          user_id,
-          status,
-          solved_at,
-          problems (
-            difficulty
-          )
-        `)
+        .select('*')
         .in('user_id', participantIds)
         .eq('status', 'solved');
 
@@ -114,35 +102,40 @@ export function useLeaderboard(currentUserId?: string): UseLeaderboardReturn {
       // 3. Fetch streaks for all participants
       const { data: streaksData, error: streakErr } = await supabase
         .from('streaks')
-        .select('user_id, current_streak')
+        .select('user_id, current_streak, last_active_date')
         .in('user_id', participantIds);
 
       if (streakErr) throw streakErr;
 
       const streakMap = new Map<string, number>();
       if (streaksData) {
-        streaksData.forEach((s) => streakMap.set(s.user_id, s.current_streak));
+        streaksData.forEach((s) =>
+          streakMap.set(s.user_id, effectiveStreak(s.current_streak, s.last_active_date))
+        );
       }
+      const solves = hydrateAttempts(attemptsData);
 
       // 4. Aggregate metrics
       const usersData: LeaderboardUser[] = participantIds.map((uid) => {
         const prof = profileMap.get(uid);
-        const userAttempts = (attemptsData || []).filter((a) => a.user_id === uid);
+        const userAttempts = solves.filter((a) => a.user_id === uid);
 
         let easyCount = 0;
         let mediumCount = 0;
         let hardCount = 0;
 
-        userAttempts.forEach((a: unknown) => {
-          const diff = (a as { problems?: { difficulty: ProblemDifficulty } })?.problems?.difficulty;
+        userAttempts.forEach((a) => {
+          const diff = a.problem!.difficulty;
           if (diff === 'Easy') easyCount++;
-          else if (diff === 'Medium') mediumCount++;
           else if (diff === 'Hard') hardCount++;
           else mediumCount++;
         });
 
         const totalSolves = easyCount + mediumCount + hardCount;
-        const totalPoints = easyCount * 1 + mediumCount * 3 + hardCount * 5;
+        const totalPoints =
+          easyCount * DIFFICULTY_POINTS.Easy +
+          mediumCount * DIFFICULTY_POINTS.Medium +
+          hardCount * DIFFICULTY_POINTS.Hard;
         const currentStreak = streakMap.get(uid) || 0;
 
         return {
@@ -186,6 +179,8 @@ export function useLeaderboard(currentUserId?: string): UseLeaderboardReturn {
   useEffect(() => {
     calculateSupabaseLeaderboard();
   }, [calculateSupabaseLeaderboard, timeframe]);
+
+  useDataRefresh(calculateSupabaseLeaderboard, Boolean(currentUserId));
 
   return {
     leaderboard,
