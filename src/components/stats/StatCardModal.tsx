@@ -2,14 +2,7 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  X,
-  Share2,
-  Download,
-  Copy,
-  Check,
-  Sparkles,
-} from 'lucide-react';
+import { X, Share2, Download, Copy, Check, Loader2 } from 'lucide-react';
 import styles from './StatCardModal.module.css';
 import { Profile, Streak, Attempt } from '../../data/types';
 
@@ -22,79 +15,160 @@ export interface StatCardModalProps {
   topBadgeName?: string;
 }
 
+// Card canvas (SVG user units). Export renders at 2x for crisp PNGs.
+const CARD_W = 640;
+const CARD_H = 384;
+const EXPORT_SCALE = 2;
+
+// Text is drawn with system fonts whose widths vary by OS (SF Pro on macOS is
+// narrower than Segoe UI / Arial on Windows), so dynamic strings are truncated
+// by character count with generous headroom rather than by measured width.
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
+function initialsFor(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'R';
+  const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : parts[0].slice(0, 2);
+  return letters.toUpperCase();
+}
+
+async function svgToPngBlob(svg: SVGSVGElement): Promise<Blob> {
+  const data = new XMLSerializer().serializeToString(svg);
+  const url = URL.createObjectURL(new Blob([data], { type: 'image/svg+xml;charset=utf-8' }));
+  try {
+    const img = new Image();
+    img.decoding = 'async';
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Could not render the card image.'));
+      img.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = CARD_W * EXPORT_SCALE;
+    canvas.height = CARD_H * EXPORT_SCALE;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas is not supported in this browser.');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not export PNG.'))), 'image/png')
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export const StatCardModal: React.FC<StatCardModalProps> = ({
   isOpen,
   onClose,
   profile,
   streak,
   attempts,
-  topBadgeName = 'Consistency Champion',
+  topBadgeName,
 }) => {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'working' | 'done'>('idle');
+  const [downloading, setDownloading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Solves breakdown
+  // Unique solved problems by difficulty
   const stats = useMemo(() => {
+    const seen = new Set<string>();
     let easy = 0;
     let medium = 0;
     let hard = 0;
-    let total = 0;
-
-    const countedIds = new Set<string>();
-
     for (const att of attempts) {
-      if (att.status === 'solved' && !countedIds.has(att.problem_id)) {
-        countedIds.add(att.problem_id);
-        total += 1;
-        if (att.problem?.difficulty === 'Easy') easy += 1;
-        else if (att.problem?.difficulty === 'Medium') medium += 1;
-        else if (att.problem?.difficulty === 'Hard') hard += 1;
-      }
+      if (att.status !== 'solved' || seen.has(att.problem_id)) continue;
+      seen.add(att.problem_id);
+      const d = att.problem?.difficulty;
+      if (d === 'Easy') easy += 1;
+      else if (d === 'Hard') hard += 1;
+      else medium += 1;
     }
-
     return {
-      total,
+      total: seen.size,
       easy,
       medium,
       hard,
       streak: streak?.current_streak ?? 0,
-      longestStreak: streak?.longest_streak ?? 0,
+      longestStreak: Math.max(streak?.longest_streak ?? 0, streak?.current_streak ?? 0),
     };
   }, [attempts, streak]);
 
-  const fullName = profile?.full_name || 'Alex Chen';
-  const username = profile?.username || 'alexchen';
-  const shareUrl = `https://recurse.dev/u/${username}`;
+  const fullName = truncate(profile?.full_name || profile?.username || 'Recurse User', 26);
+  const username = truncate(profile?.username || 'user', 24);
+  const monthLabel = new Date()
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    .toUpperCase();
 
-  const handleCopyLink = async () => {
+  // Difficulty bar segments (x offset + width within a 256-unit track)
+  const BAR_W = 256;
+  const segments = useMemo(() => {
+    if (stats.total === 0) return [];
+    let x = 0;
+    return [
+      { key: 'easy', count: stats.easy, color: '#30D158' },
+      { key: 'medium', count: stats.medium, color: '#FF9F0A' },
+      { key: 'hard', count: stats.hard, color: '#FF453A' },
+    ]
+      .filter((s) => s.count > 0)
+      .map((s) => {
+        const w = (s.count / stats.total) * BAR_W;
+        const seg = { ...s, x, w };
+        x += w;
+        return seg;
+      });
+  }, [stats]);
+
+  const handleCopyImage = async () => {
+    if (!svgRef.current) return;
+    setExportError(null);
+    setCopyState('working');
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
+      if (!('ClipboardItem' in window) || !navigator.clipboard?.write) {
+        throw new Error('Copying images is not supported in this browser. Use Download PNG instead.');
+      }
+      // Pass a promise so Safari keeps the user-gesture context.
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': svgToPngBlob(svgRef.current) }),
+      ]);
+      setCopyState('done');
+      setTimeout(() => setCopyState('idle'), 2000);
+    } catch (err: unknown) {
+      setCopyState('idle');
+      setExportError(err instanceof Error ? err.message : 'Could not copy the image.');
     }
   };
 
-  const handleDownloadSvg = () => {
+  const handleDownloadPng = async () => {
     if (!svgRef.current) return;
-    const svgData = new XMLSerializer().serializeToString(svgRef.current);
-    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-    const svgUrl = URL.createObjectURL(svgBlob);
-    const downloadLink = document.createElement('a');
-    downloadLink.href = svgUrl;
-    downloadLink.download = `recurse-stat-card-${username}.svg`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    URL.revokeObjectURL(svgUrl);
+    setExportError(null);
+    setDownloading(true);
+    try {
+      const blob = await svgToPngBlob(svgRef.current);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `recurse-${profile?.username || 'stats'}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : 'Could not export the image.');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   if (!isOpen) return null;
 
+  const font = `-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
+
   return (
     <AnimatePresence>
-      <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="stat-card-title">
         <motion.div
           className={styles.modalCard}
           onClick={(e) => e.stopPropagation()}
@@ -105,186 +179,225 @@ export const StatCardModal: React.FC<StatCardModalProps> = ({
         >
           <div className={styles.sheenTop} />
 
-          {/* Modal Header */}
           <div className={styles.header}>
             <div className={styles.headerTitleGroup}>
               <div className={styles.subheading}>
                 <Share2 size={14} />
-                <span>Shareable Profile Asset</span>
+                <span>Share Your Progress</span>
               </div>
-              <h2 className={styles.title}>Developer Stat Card</h2>
+              <h2 className={styles.title} id="stat-card-title">Stat Card</h2>
               <span className={styles.subtitle}>
-                Export your verified algorithmic stats card for GitHub, LinkedIn, or portfolio embeds.
+                A snapshot of your practice for GitHub, LinkedIn, or your portfolio.
               </span>
             </div>
 
-            <button
-              type="button"
-              className={styles.closeButton}
-              onClick={onClose}
-              aria-label="Close stat card modal"
-            >
+            <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Close stat card">
               <X size={16} />
             </button>
           </div>
 
-          {/* SVG Preview Frame */}
           <div className={styles.svgPreviewContainer}>
             <svg
               ref={svgRef}
-              viewBox="0 0 600 340"
+              viewBox={`0 0 ${CARD_W} ${CARD_H}`}
+              width={CARD_W}
+              height={CARD_H}
               xmlns="http://www.w3.org/2000/svg"
               className={styles.statCardSvg}
+              role="img"
+              aria-label={`${fullName}: ${stats.total} problems solved, ${stats.streak} day streak`}
+              fontFamily={font}
             >
               <defs>
-                <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#121216" />
-                  <stop offset="100%" stopColor="#09090C" />
+                <linearGradient id="rc-bg" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#17171B" />
+                  <stop offset="1" stopColor="#0B0B0E" />
                 </linearGradient>
-
-                <linearGradient id="sheenGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(255, 255, 255, 0)" />
-                  <stop offset="50%" stopColor="rgba(255, 255, 255, 0.25)" />
-                  <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
+                <radialGradient id="rc-glow-blue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(90 40) scale(300 220)">
+                  <stop offset="0" stopColor="#0A84FF" stopOpacity="0.28" />
+                  <stop offset="1" stopColor="#0A84FF" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="rc-glow-purple" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 360) scale(320 240)">
+                  <stop offset="0" stopColor="#BF5AF2" stopOpacity="0.2" />
+                  <stop offset="1" stopColor="#BF5AF2" stopOpacity="0" />
+                </radialGradient>
+                <linearGradient id="rc-avatar" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#0A84FF" />
+                  <stop offset="1" stopColor="#5E5CE6" />
                 </linearGradient>
-
-                <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#BF5AF2" />
-                  <stop offset="100%" stopColor="#5E5CE6" />
+                <linearGradient id="rc-tile" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stopColor="#0B0B0E" />
+                  <stop offset="1" stopColor="#141416" />
                 </linearGradient>
-
-                <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
-                  <feDropShadow dx="0" dy="16" stdDeviation="20" floodColor="#000000" floodOpacity="0.5" />
-                </filter>
+                <linearGradient id="rc-sheen" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
+                  <stop offset="0.5" stopColor="#FFFFFF" stopOpacity="0.28" />
+                  <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+                </linearGradient>
+                <clipPath id="rc-card">
+                  <rect width={CARD_W} height={CARD_H} rx="24" />
+                </clipPath>
+                <clipPath id="rc-bar">
+                  <rect x="0" y="0" width={BAR_W} height="8" rx="4" />
+                </clipPath>
               </defs>
 
-              <style>{`
-                .titleText { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; font-weight: 700; fill: #FFFFFF; }
-                .handleText { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; font-weight: 500; fill: rgba(235, 235, 245, 0.6); }
-                .metricNum { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; font-weight: 700; fill: #FFFFFF; font-size: 26px; }
-                .metricLbl { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; font-weight: 600; font-size: 11px; text-transform: uppercase; fill: rgba(235, 235, 245, 0.4); letter-spacing: 0.05em; }
-                .brandWordmark { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; font-weight: 800; font-size: 14px; letter-spacing: 0.12em; fill: #0A84FF; }
-              `}</style>
+              {/* Card surface */}
+              <g clipPath="url(#rc-card)">
+                <rect width={CARD_W} height={CARD_H} fill="url(#rc-bg)" />
+                <rect width={CARD_W} height={CARD_H} fill="url(#rc-glow-blue)" />
+                <rect width={CARD_W} height={CARD_H} fill="url(#rc-glow-purple)" />
+                <rect x="40" y="0" width={CARD_W - 80} height="1" fill="url(#rc-sheen)" />
+              </g>
+              <rect x="0.5" y="0.5" width={CARD_W - 1} height={CARD_H - 1} rx="23.5" fill="none" stroke="#FFFFFF" strokeOpacity="0.1" />
 
-              {/* Background Card */}
-              <rect
-                x="4"
-                y="4"
-                width="592"
-                height="332"
-                rx="20"
-                fill="url(#bgGradient)"
-                stroke="rgba(255, 255, 255, 0.12)"
-                strokeWidth="1.5"
-              />
-
-              {/* Top Sheen */}
-              <rect x="20" y="4" width="560" height="1.5" fill="url(#sheenGrad)" />
-
-              {/* Header: Logo and Recurse branding */}
-              <g transform="translate(36, 36)">
-                {/* Logo Vector Icon */}
-                <rect width="28" height="28" rx="8" fill="#0A84FF" fillOpacity="0.18" stroke="#0A84FF" strokeWidth="1" />
+              {/* Brand: Recurse logomark + wordmark */}
+              <g transform="translate(32 28)">
+                <rect width="30" height="30" rx="8" fill="url(#rc-tile)" stroke="#FFFFFF" strokeOpacity="0.14" />
                 <path
-                  d="M9 14 C9 10.5 11.5 8 15 8 C18.5 8 20 10 20 14"
-                  stroke="#0A84FF"
-                  strokeWidth="2"
-                  strokeLinecap="round"
+                  d="M 7.5 22 L 7.5 7.5 L 22.5 7.5 L 22.5 18 L 12.5 18 L 12.5 12.5 L 17.5 12.5"
                   fill="none"
-                />
-                <polyline
-                  points="18,11 20,14 17,16"
                   stroke="#0A84FF"
-                  strokeWidth="2"
+                  strokeWidth="2.4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  fill="none"
                 />
-                <text x="38" y="19" className="brandWordmark">RECURSE</text>
+                <text x="42" y="21" fontSize="17" fontWeight="600" fill="#FFFFFF" letterSpacing="-0.3">
+                  Recurse
+                </text>
               </g>
 
-              {/* Verified Pill */}
-              <g transform="translate(450, 36)">
-                <rect width="114" height="26" rx="13" fill="rgba(48, 209, 88, 0.15)" stroke="rgba(48, 209, 88, 0.3)" />
-                <circle cx="16" cy="13" r="4" fill="#30D158" />
-                <text x="28" y="17" className="titleText" fontSize="11" fill="#30D158">VERIFIED SOLVER</text>
+              {/* Period pill */}
+              <g transform={`translate(${CARD_W - 32 - 150} 30)`}>
+                <rect width="150" height="26" rx="13" fill="#FFFFFF" fillOpacity="0.06" stroke="#FFFFFF" strokeOpacity="0.1" />
+                <text x="75" y="17.5" textAnchor="middle" fontSize="10.5" fontWeight="600" fill="#EBEBF5" fillOpacity="0.6" letterSpacing="0.8">
+                  {monthLabel}
+                </text>
               </g>
 
-              {/* User Identity Row */}
-              <g transform="translate(36, 90)">
-                {/* Monogram circle */}
-                <circle cx="28" cy="28" r="28" fill="url(#purpleGrad)" />
-                <text x="28" y="36" className="titleText" fontSize="20" textAnchor="middle">
-                  {fullName.charAt(0)}
+              {/* Identity */}
+              <g transform="translate(32 84)">
+                <circle cx="26" cy="26" r="26" fill="url(#rc-avatar)" />
+                <text x="26" y="33" textAnchor="middle" fontSize="18" fontWeight="600" fill="#FFFFFF">
+                  {initialsFor(profile?.full_name || profile?.username || 'R')}
+                </text>
+                <text x="68" y="22" fontSize="21" fontWeight="700" fill="#FFFFFF" letterSpacing="-0.4">
+                  {fullName}
+                </text>
+                <text x="68" y="43" fontSize="13" fontWeight="500" fill="#EBEBF5" fillOpacity="0.6">
+                  @{username}
+                </text>
+              </g>
+
+              {/* Hero: problems solved */}
+              <g transform="translate(32 160)">
+                <rect width="296" height="176" rx="18" fill="#FFFFFF" fillOpacity="0.045" stroke="#FFFFFF" strokeOpacity="0.09" />
+                <text x="20" y="32" fontSize="10.5" fontWeight="600" fill="#EBEBF5" fillOpacity="0.45" letterSpacing="0.9">
+                  PROBLEMS SOLVED
+                </text>
+                <text x="18" y="94" fontSize="56" fontWeight="700" fill="#FFFFFF" letterSpacing="-2">
+                  {stats.total}
                 </text>
 
-                {/* Name & Handle */}
-                <text x="70" y="24" className="titleText" fontSize="20">{fullName}</text>
-                <text x="70" y="44" className="handleText" fontSize="13">@{username} · LeetCode Practice</text>
-              </g>
-
-              {/* Metrics Grid */}
-              <g transform="translate(36, 175)">
-                {/* Total Solved Box */}
-                <rect width="160" height="96" rx="14" fill="#1C1C1E" stroke="rgba(255, 255, 255, 0.08)" />
-                <text x="18" y="32" className="metricLbl">TOTAL SOLVED</text>
-                <text x="18" y="66" className="metricNum">{stats.total}</text>
-                <g transform="translate(18, 76)">
-                  <circle cx="3" cy="6" r="3" fill="#30D158" />
-                  <text x="10" y="10" className="handleText" fontSize="10">{stats.easy}E</text>
-                  <circle cx="38" cy="6" r="3" fill="#FF9F0A" />
-                  <text x="45" y="10" className="handleText" fontSize="10">{stats.medium}M</text>
-                  <circle cx="73" cy="6" r="3" fill="#FF453A" />
-                  <text x="80" y="10" className="handleText" fontSize="10">{stats.hard}H</text>
+                {/* Difficulty breakdown bar */}
+                <g transform="translate(20 116)">
+                  <rect width={BAR_W} height="8" rx="4" fill="#FFFFFF" fillOpacity="0.08" />
+                  <g clipPath="url(#rc-bar)">
+                    {segments.map((s) => (
+                      <rect key={s.key} x={s.x} width={s.w} height="8" fill={s.color} />
+                    ))}
+                  </g>
                 </g>
 
-                {/* Active Streak Box */}
-                <g transform="translate(184, 0)">
-                  <rect width="160" height="96" rx="14" fill="#1C1C1E" stroke="rgba(255, 255, 255, 0.08)" />
-                  <text x="18" y="32" className="metricLbl">CONSISTENCY STREAK</text>
-                  <text x="18" y="66" className="metricNum">{stats.streak} Days</text>
-                  <text x="18" y="86" className="handleText" fontSize="11">Best: {stats.longestStreak} days</text>
-                </g>
-
-                {/* Top Badge Milestone */}
-                <g transform="translate(368, 0)">
-                  <rect width="160" height="96" rx="14" fill="#1C1C1E" stroke="rgba(255, 255, 255, 0.08)" />
-                  <text x="18" y="32" className="metricLbl">TOP MILESTONE</text>
-                  <text x="18" y="62" className="titleText" fontSize="14" fill="#FF9F0A">{topBadgeName}</text>
-                  <text x="18" y="82" className="handleText" fontSize="11">Earned on Recurse</text>
+                {/* Legend */}
+                <g transform="translate(20 150)" fontSize="12" fontWeight="500">
+                  <circle cx="4" cy="-4" r="4" fill="#30D158" />
+                  <text x="14" y="0" fill="#EBEBF5" fillOpacity="0.72">{stats.easy} Easy</text>
+                  <circle cx="92" cy="-4" r="4" fill="#FF9F0A" />
+                  <text x="102" y="0" fill="#EBEBF5" fillOpacity="0.72">{stats.medium} Medium</text>
+                  <circle cx="196" cy="-4" r="4" fill="#FF453A" />
+                  <text x="206" y="0" fill="#EBEBF5" fillOpacity="0.72">{stats.hard} Hard</text>
                 </g>
               </g>
 
-              {/* Footer Watermark */}
-              <text x="36" y="310" className="handleText" fontSize="10">
-                Generated via Recurse · Open-source Apple HIG LeetCode Tracking
+              {/* Streak tile */}
+              <g transform="translate(344 160)">
+                <rect width="264" height="80" rx="18" fill="#FFFFFF" fillOpacity="0.045" stroke="#FFFFFF" strokeOpacity="0.09" />
+                <text x="20" y="30" fontSize="10.5" fontWeight="600" fill="#EBEBF5" fillOpacity="0.45" letterSpacing="0.9">
+                  CURRENT STREAK
+                </text>
+                <text x="20" y="62" fontSize="26" fontWeight="700" fill="#FFFFFF" letterSpacing="-0.6">
+                  {stats.streak}
+                  <tspan fontSize="15" fontWeight="600" fill="#FF9F0A" dx="6">
+                    {stats.streak === 1 ? 'day' : 'days'}
+                  </tspan>
+                </text>
+                <text x="244" y="62" textAnchor="end" fontSize="12" fontWeight="500" fill="#EBEBF5" fillOpacity="0.55">
+                  Best {stats.longestStreak}
+                </text>
+              </g>
+
+              {/* Top badge tile */}
+              <g transform="translate(344 256)">
+                <rect width="264" height="80" rx="18" fill="#FFFFFF" fillOpacity="0.045" stroke="#FFFFFF" strokeOpacity="0.09" />
+                <text x="20" y="30" fontSize="10.5" fontWeight="600" fill="#EBEBF5" fillOpacity="0.45" letterSpacing="0.9">
+                  TOP BADGE
+                </text>
+                {topBadgeName ? (
+                  <text x="20" y="60" fontSize="17" fontWeight="700" fill="#BF5AF2" letterSpacing="-0.3">
+                    {truncate(topBadgeName, 22)}
+                  </text>
+                ) : (
+                  <text x="20" y="60" fontSize="14" fontWeight="500" fill="#EBEBF5" fillOpacity="0.5">
+                    First badge in progress
+                  </text>
+                )}
+              </g>
+
+              {/* Footer */}
+              <text x="32" y="364" fontSize="11" fontWeight="500" fill="#EBEBF5" fillOpacity="0.38">
+                Tracked with Recurse
+              </text>
+              <text x={CARD_W - 32} y="364" textAnchor="end" fontSize="11" fontWeight="500" fill="#EBEBF5" fillOpacity="0.38">
+                recurse.talibibrahim04.workers.dev
               </text>
             </svg>
           </div>
 
-          {/* Actions Row */}
+          {exportError && (
+            <p className={styles.errorText} role="alert">
+              {exportError}
+            </p>
+          )}
+
           <div className={styles.actionsRow}>
-            <div className={styles.shareUrlGroup}>
-              <span>{shareUrl}</span>
-            </div>
+            <span className={styles.hint}>PNG, 1280 × 768</span>
 
             <div className={styles.buttonGroup}>
               <button
                 type="button"
                 className={styles.copyBtn}
-                onClick={handleCopyLink}
+                onClick={handleCopyImage}
+                disabled={copyState === 'working'}
               >
-                {copied ? <Check size={14} className="text-accent-green" /> : <Copy size={14} />}
-                <span>{copied ? 'Link Copied!' : 'Copy Share Link'}</span>
+                {copyState === 'done' ? (
+                  <Check size={14} className="text-accent-green" />
+                ) : copyState === 'working' ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Copy size={14} />
+                )}
+                <span>{copyState === 'done' ? 'Copied' : 'Copy Image'}</span>
               </button>
 
               <button
                 type="button"
                 className={styles.downloadBtn}
-                onClick={handleDownloadSvg}
+                onClick={handleDownloadPng}
+                disabled={downloading}
               >
-                <Download size={14} />
-                <span>Download SVG</span>
+                {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                <span>Download PNG</span>
               </button>
             </div>
           </div>

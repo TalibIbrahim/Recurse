@@ -57,7 +57,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--accent-purple);
+  color: var(--accent-blue);
 }
 
 .title {
@@ -97,20 +97,38 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #000000;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(10, 132, 255, 0.08), transparent 60%),
+    #050506;
   border: 1px solid var(--glass-border);
   border-radius: 18px;
-  padding: 1.25rem;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  padding: 1.5rem;
   overflow: hidden;
 }
 
 .statCardSvg {
   width: 100%;
   height: auto;
-  max-width: 580px;
+  max-width: 640px;
   display: block;
-  border-radius: 12px;
+  border-radius: 20px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+.errorText {
+  margin-top: 1rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 69, 58, 0.35);
+  background: rgba(255, 69, 58, 0.1);
+  color: #FF6961;
+  font-size: 0.8125rem;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--label-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Actions Row */
@@ -121,28 +139,6 @@
   margin-top: 1.5rem;
   gap: 1rem;
   flex-wrap: wrap;
-}
-
-.shareUrlGroup {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--surface-secondary);
-  border: 1px solid var(--glass-border);
-  border-radius: 10px;
-  padding: 0.4375rem 0.75rem;
-  font-size: 0.75rem;
-  color: var(--label-secondary);
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.shareUrlGroup span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
 }
 
 .buttonGroup {
@@ -194,18 +190,34 @@
   align-items: center;
   gap: 0.375rem;
   padding: 0.5625rem 1.25rem;
-  background: var(--accent-purple);
-  border: 1px solid var(--accent-purple);
+  background: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
   border-radius: 10px;
   color: #FFFFFF;
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(175, 82, 222, 0.35);
+  box-shadow: 0 4px 14px rgba(10, 132, 255, 0.35);
   transition: all 0.15s ease;
 }
 
-.downloadBtn:hover {
+.downloadBtn:hover:not(:disabled) {
   opacity: 0.92;
   transform: translateY(-1px);
+}
+
+.copyBtn:disabled,
+.downloadBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Phone overrides — must come after the base rules above. */
+@media (max-width: 640px) {
+  .svgPreviewContainer {
+    padding: 0.75rem;
+  }
+  .statCardSvg {
+    border-radius: 12px;
+  }
 }
