@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function showUpdateBanner(latest) {
     updateText.innerHTML =
       `<strong>Version ${latest} is available</strong> (you have ${installedVersion}). ` +
-      'Run <code>git pull</code> in the Recurse folder, then reload the extension.';
+      'Replace your extension folder with the latest version (or run <code>git pull</code>), then reload.';
     updateBanner.classList.add('visible');
   }
 
