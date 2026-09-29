@@ -3,21 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recurse Extension</title>
+  <title>Recurse</title>
   <style>
+    /* Apple dark system palette — mirrors the web app (src/index.css) */
     :root {
-      --bg: #090D16;
-      --card-bg: rgba(255, 255, 255, 0.04);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --border-focus: #38BDF8;
-      --text: #F8FAFC;
-      --text-muted: #94A3B8;
-      --text-dim: #64748B;
-      --primary: #0284C7;
-      --primary-hover: #0369A1;
-      --success: #10B981;
-      --warning: #F59E0B;
-      --danger: #EF4444;
+      color-scheme: dark;
+      --canvas: #000000;
+      --glass: rgba(28, 28, 30, 0.58);
+      --glass-strong: rgba(44, 44, 46, 0.66);
+      --glass-border: rgba(255, 255, 255, 0.10);
+      --glass-sheen: rgba(255, 255, 255, 0.16);
+      --separator: rgba(84, 84, 88, 0.45);
+      --fill: rgba(120, 120, 128, 0.20);
+      --fill-hover: rgba(120, 120, 128, 0.30);
+      --label: #FFFFFF;
+      --label-2: rgba(235, 235, 245, 0.62);
+      --label-3: rgba(235, 235, 245, 0.32);
+      --blue: #0A84FF;
+      --blue-pressed: #0071E3;
+      --green: #30D158;
+      --orange: #FF9F0A;
+      --red: #FF453A;
+      --purple: #BF5AF2;
+      --radius-card: 16px;
+      --radius-control: 11px;
+      --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
     }
 
     * {
@@ -26,425 +36,739 @@
       padding: 0;
     }
 
+    html {
+      background: var(--canvas);
+    }
+
     body {
-      width: 320px;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      padding: 16px;
+      position: relative;
+      width: 340px;
+      min-height: 200px;
+      padding: 14px 14px 12px;
+      overflow-x: hidden;
+      background: var(--canvas);
+      color: var(--label);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Inter, Roboto, sans-serif;
+      font-size: 13px;
+      letter-spacing: -0.01em;
       -webkit-font-smoothing: antialiased;
       user-select: none;
     }
 
+    /* Ambient color behind the glass so the blur has something to refract */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .ambient::before,
+    .ambient::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(48px);
+      opacity: 0.55;
+    }
+
+    .ambient::before {
+      width: 220px;
+      height: 220px;
+      top: -90px;
+      left: -60px;
+      background: radial-gradient(circle, rgba(10, 132, 255, 0.85), transparent 70%);
+    }
+
+    .ambient::after {
+      width: 200px;
+      height: 200px;
+      top: 120px;
+      right: -110px;
+      background: radial-gradient(circle, rgba(191, 90, 242, 0.6), transparent 70%);
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    /* Glass material */
+    .glass {
+      position: relative;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-card);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+      box-shadow:
+        inset 0 1px 0 var(--glass-sheen),
+        0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Header */
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 14px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--card-border);
+      padding: 2px 2px 0;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
     }
 
-    .brand-mark {
-      width: 8px;
-      height: 8px;
-      background: #38BDF8;
-      border-radius: 50%;
-      box-shadow: 0 0 10px #38BDF8;
+    .app-icon {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      border-radius: 7px;
+      box-shadow: 0 2px 8px rgba(10, 132, 255, 0.25);
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
     }
 
     .brand-title {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }
-
-    .badge {
-      font-size: 10px;
+      font-size: 15px;
       font-weight: 600;
-      letter-spacing: 0.04em;
-      padding: 2px 7px;
-      border-radius: 9999px;
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--text-muted);
-      border: 1px solid var(--card-border);
+      letter-spacing: -0.03em;
     }
 
-    /* Connected View */
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 14px;
-    }
-
-    .status-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .brand-sub {
       font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      color: var(--label-2);
     }
 
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-    }
-
-    .status-dot.active {
-      background-color: var(--success);
-      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
-    }
-
-    .status-dot.idle {
-      background-color: var(--warning);
-      box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
-    }
-
-    .user-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      margin-bottom: 10px;
-    }
-
-    .user-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: #FFFFFF;
-    }
-
-    .user-handle {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .token-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 6px 8px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      cursor: pointer;
-      margin-top: 6px;
-    }
-
-    .token-row:hover {
-      border-color: rgba(255, 255, 255, 0.15);
-    }
-
-    .token-text {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 10px;
-      color: var(--text-dim);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: 220px;
-    }
-
-    .copy-hint {
-      font-size: 10px;
-      color: #38BDF8;
-      font-weight: 600;
-    }
-
-    .info-text {
-      font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.45;
-      margin-bottom: 14px;
-    }
-
-    .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      padding: 9px 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s ease;
-      text-decoration: none;
-    }
-
-    .btn-primary {
-      background-color: var(--primary);
-      color: #FFFFFF;
-      margin-bottom: 8px;
-    }
-
-    .btn-primary:hover {
-      background-color: var(--primary-hover);
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.06);
-      color: var(--text);
-      border: 1px solid var(--card-border);
-      margin-bottom: 8px;
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .btn-subtle {
-      background: transparent;
-      color: var(--text-dim);
-      font-size: 11px;
-      padding: 6px;
-      margin-top: 4px;
-    }
-
-    .btn-subtle:hover {
-      color: var(--text);
-    }
-
-    /* Manual Link Section */
-    .manual-section {
-      margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid var(--card-border);
-    }
-
-    .manual-toggle {
-      font-size: 11px;
-      color: var(--text-muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 4px 0;
-    }
-
-    .manual-toggle:hover {
-      color: var(--text);
-    }
-
-    .manual-content {
-      margin-top: 8px;
-      display: none;
-    }
-
-    .manual-content.open {
-      display: block;
-    }
-
-    input {
-      width: 100%;
-      padding: 8px 10px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 12px;
-      outline: none;
-      margin-bottom: 8px;
-      transition: border-color 0.15s ease;
-    }
-
-    input:focus {
-      border-color: var(--border-focus);
-    }
-
-    /* Status Alert */
-    .status-alert {
-      margin-top: 10px;
-      padding: 8px 10px;
-      border-radius: 6px;
+    .version-pill {
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--fill);
+      color: var(--label-2);
       font-size: 11px;
       font-weight: 500;
-      display: none;
-      align-items: center;
-      gap: 6px;
+      font-variant-numeric: tabular-nums;
     }
 
-    .status-alert.success {
-      display: flex;
-      background: rgba(16, 185, 129, 0.12);
-      color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-
-    /* Update banner & footer */
+    /* Update banner */
     .update-banner {
       display: none;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 14px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      background: rgba(56, 189, 248, 0.1);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      font-size: 11px;
-      line-height: 1.45;
-      color: #BAE6FD;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(10, 132, 255, 0.16);
+      border-color: rgba(10, 132, 255, 0.35);
     }
 
     .update-banner.visible {
       display: flex;
+      flex-direction: column;
     }
 
-    .update-banner strong {
+    .update-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .update-row svg {
+      flex-shrink: 0;
+      margin-top: 1px;
+      color: var(--blue);
+    }
+
+    .update-text {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--label-2);
+    }
+
+    .update-text strong {
+      color: var(--label);
+      font-weight: 600;
+    }
+
+    .update-text code {
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 11px;
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.35);
+      color: var(--label);
+    }
+
+    /* Profile card */
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #0A84FF, #5E5CE6);
+      color: #FFFFFF;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+
+    .profile-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .profile-name {
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .profile-handle {
+      font-size: 12px;
+      color: var(--label-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .status-pill.live {
+      background: rgba(48, 209, 88, 0.15);
+      color: var(--green);
+    }
+
+    .status-pill.idle {
+      background: rgba(255, 159, 10, 0.15);
+      color: var(--orange);
+    }
+
+    .status-pill .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    .status-pill.live .dot {
+      animation: pulse 2.4s var(--ease) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    /* Grouped inset list (iOS Settings style) */
+    .list {
+      overflow: hidden;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 0 12px;
+      position: relative;
+    }
+
+    .row + .row::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 46px;
+      right: 0;
+      height: 0.5px;
+      background: var(--separator);
+    }
+
+    .row-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
       color: #FFFFFF;
     }
 
-    .update-banner code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 10px;
-      padding: 1px 4px;
-      border-radius: 4px;
+    .row-icon.green { background: var(--green); }
+    .row-icon.orange { background: var(--orange); }
+    .row-icon.blue { background: var(--blue); }
+    .row-icon.gray { background: #636366; }
+
+    .row-label {
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+    }
+
+    .row-value {
+      font-size: 13px;
+      color: var(--label-2);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .row.interactive {
+      cursor: pointer;
+      transition: background 0.15s var(--ease);
+    }
+
+    .row.interactive:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .row.interactive:active {
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    .mono {
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 11px;
+      color: var(--label-2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .copy-hint {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--blue);
+      transition: color 0.15s var(--ease);
+    }
+
+    .copy-hint.copied {
+      color: var(--green);
+    }
+
+    /* Buttons */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      width: 100%;
+      height: 38px;
+      padding: 0 14px;
+      border: none;
+      border-radius: var(--radius-control);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: background 0.15s var(--ease), transform 0.1s var(--ease), opacity 0.15s var(--ease);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    .btn:focus-visible,
+    .row.interactive:focus-visible,
+    .text-btn:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(10, 132, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--blue-pressed);
+    }
+
+    .btn-glass {
+      background: var(--glass-strong);
+      color: var(--label);
+      border: 1px solid var(--glass-border);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(20px) saturate(180%);
+      box-shadow: inset 0 1px 0 var(--glass-sheen);
+    }
+
+    .btn-glass:hover:not(:disabled) {
+      background: rgba(58, 58, 60, 0.75);
+    }
+
+    .text-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: none;
+      border: none;
+      padding: 4px 2px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--label-2);
+      cursor: pointer;
+      transition: color 0.15s var(--ease);
+    }
+
+    .text-btn:hover:not(:disabled) {
+      color: var(--label);
+    }
+
+    .text-btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .text-btn.destructive {
+      color: var(--red);
+    }
+
+    .text-btn.destructive:hover {
+      color: #FF6961;
+    }
+
+    .center {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Disconnected hero */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 6px;
+      padding: 22px 18px 18px;
+    }
+
+    .hero-icon {
+      width: 56px;
+      height: 56px;
+      margin-bottom: 8px;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(10, 132, 255, 0.3);
+    }
+
+    .hero-title {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-body {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--label-2);
+      max-width: 250px;
+    }
+
+    .hero .btn {
+      margin-top: 12px;
+    }
+
+    /* Manual connect disclosure */
+    .disclosure {
+      overflow: hidden;
+    }
+
+    .chevron {
+      color: var(--label-3);
+      transition: transform 0.2s var(--ease);
+    }
+
+    .chevron.open {
+      transform: rotate(90deg);
+    }
+
+    .manual-content {
+      display: none;
+      padding: 4px 12px 12px;
+    }
+
+    .manual-content.open {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .manual-help {
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--label-3);
+    }
+
+    input {
+      width: 100%;
+      height: 36px;
+      padding: 0 11px;
+      border-radius: 9px;
+      border: 1px solid var(--glass-border);
       background: rgba(0, 0, 0, 0.35);
+      color: var(--label);
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-size: 11px;
+      outline: none;
+      transition: border-color 0.15s var(--ease);
     }
 
-    .update-banner .btn {
-      margin-bottom: 0;
+    input::placeholder {
+      color: var(--label-3);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
     }
 
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
+    }
+
+    /* Footer */
     .footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      margin-top: 12px;
-      padding-top: 10px;
-      border-top: 1px solid var(--card-border);
+      padding: 2px 4px 0;
     }
 
-    .footer-btn {
-      display: inline-flex;
+    /* Toast */
+    .status-alert {
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      z-index: 10;
+      display: none;
       align-items: center;
-      gap: 5px;
-      background: transparent;
-      border: none;
-      padding: 4px 2px;
-      font-size: 11px;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 12px;
       font-weight: 500;
-      color: var(--text-dim);
-      cursor: pointer;
-      font-family: inherit;
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 var(--glass-sheen);
+      animation: toast-in 0.25s var(--ease);
     }
 
-    .footer-btn:hover:not(:disabled) {
-      color: var(--text);
+    .status-alert::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: currentColor;
     }
 
-    .footer-btn:disabled {
-      cursor: default;
-      opacity: 0.6;
+    .status-alert.success {
+      background: rgba(28, 44, 32, 0.85);
+      border: 1px solid rgba(48, 209, 88, 0.35);
+      color: #7EE2A0;
     }
 
     .status-alert.error {
-      display: flex;
-      background: rgba(239, 68, 68, 0.12);
-      color: #F87171;
-      border: 1px solid rgba(239, 68, 68, 0.25);
+      background: rgba(48, 24, 24, 0.88);
+      border: 1px solid rgba(255, 69, 58, 0.4);
+      color: #FF8A80;
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="brand">
-      <div class="brand-mark"></div>
-      <div class="brand-title">Recurse</div>
-    </div>
-    <div class="badge" id="versionBadge">Extension</div>
-  </div>
+  <div class="ambient" aria-hidden="true"></div>
 
-  <div class="update-banner" id="updateBanner" role="status">
-    <span id="updateText"></span>
-    <button type="button" id="btnReloadNow" class="btn btn-primary">Reload Extension</button>
-  </div>
+  <!-- Recurse logomark (same geometry as public/favicon.svg) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="recurse-logo" viewBox="0 0 32 32">
+        <defs>
+          <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2C2C2E"/>
+            <stop offset="1" stop-color="#141416"/>
+          </linearGradient>
+        </defs>
+        <rect width="32" height="32" rx="7.5" fill="url(#tile)"/>
+        <rect x="0.5" y="0.5" width="31" height="31" rx="7" fill="none" stroke="rgba(255,255,255,0.14)"/>
+        <path d="M 8 23.5 L 8 8 L 23.5 8 L 23.5 19 L 13.5 19 L 13.5 13.5 L 18.5 13.5" fill="none" stroke="#0A84FF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+    </defs>
+  </svg>
 
-  <!-- View A: Connected -->
-  <div id="viewConnected" style="display: none;">
-    <div class="card">
-      <div class="status-row">
-        <div class="status-indicator">
-          <div class="status-dot active"></div>
-          <span style="color: var(--success);">Connected</span>
+  <main class="app">
+    <header class="header">
+      <div class="brand">
+        <svg class="app-icon" aria-hidden="true"><use href="#recurse-logo"/></svg>
+        <div class="brand-text">
+          <span class="brand-title">Recurse</span>
+          <span class="brand-sub">LeetCode Sync</span>
         </div>
       </div>
-      <div class="user-info">
-        <div class="user-name" id="connectedName">Account User</div>
-        <div class="user-handle" id="connectedHandle">@user</div>
+      <span class="version-pill" id="versionBadge">—</span>
+    </header>
+
+    <!-- Update available -->
+    <section class="glass update-banner" id="updateBanner" role="status">
+      <div class="update-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/><path d="M12 16V8M8.5 11.5 12 8l3.5 3.5"/>
+        </svg>
+        <span class="update-text" id="updateText"></span>
       </div>
-      <div class="token-row" id="tokenRow" title="Click to copy Account ID">
-        <span class="token-text" id="connectedUserId">...</span>
-        <span class="copy-hint" id="copyHint">Copy</span>
-      </div>
-    </div>
+      <button type="button" id="btnReloadNow" class="btn btn-primary">Reload Extension</button>
+    </section>
 
-    <div class="info-text">
-      Submissions marked <strong>Accepted</strong> on LeetCode will automatically log to your streak and daily goals.
-    </div>
-
-    <button type="button" id="btnDashboard" class="btn btn-primary">Open Recurse Dashboard</button>
-    <button type="button" id="btnLeetCode" class="btn btn-secondary">Open LeetCode Problems</button>
-    <button type="button" id="btnDisconnect" class="btn btn-subtle">Disconnect Account</button>
-  </div>
-
-  <!-- View B: Not Connected -->
-  <div id="viewDisconnected" style="display: none;">
-    <div class="card">
-      <div class="status-row">
-        <div class="status-indicator">
-          <div class="status-dot idle"></div>
-          <span style="color: var(--warning);">Not Connected</span>
+    <!-- Connected -->
+    <div id="viewConnected" class="app" hidden>
+      <section class="glass profile">
+        <div class="avatar" id="avatarInitials" aria-hidden="true">R</div>
+        <div class="profile-meta">
+          <span class="profile-name" id="connectedName">Account User</span>
+          <span class="profile-handle" id="connectedHandle"></span>
         </div>
+        <span class="status-pill live"><span class="dot"></span>Syncing</span>
+      </section>
+
+      <section class="glass list" aria-label="Sync activity">
+        <div class="row">
+          <span class="row-icon green">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7.5"/></svg>
+          </span>
+          <span class="row-label">Logged today</span>
+          <span class="row-value" id="statToday">0</span>
+        </div>
+        <div class="row">
+          <span class="row-icon orange">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 2"/></svg>
+          </span>
+          <span class="row-label">Waiting to sync</span>
+          <span class="row-value" id="statPending">0</span>
+        </div>
+        <div class="row">
+          <span class="row-icon blue">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16m0 4v-4h-4"/></svg>
+          </span>
+          <span class="row-label">Last synced</span>
+          <span class="row-value" id="statLastSync">—</span>
+        </div>
+        <div class="row interactive" id="tokenRow" role="button" tabindex="0" title="Copy your account ID">
+          <span class="row-icon gray">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+          </span>
+          <span class="row-label mono" id="connectedUserId">...</span>
+          <span class="copy-hint" id="copyHint">Copy</span>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="btnDashboard" class="btn btn-primary">Open Dashboard</button>
+        <button type="button" id="btnLeetCode" class="btn btn-glass">Open LeetCode</button>
       </div>
-      <div class="info-text" style="margin-bottom: 0;">
-        Sign in to your Recurse account to enable automatic solve sync and streak tracking.
+
+      <div class="center">
+        <button type="button" id="btnDisconnect" class="text-btn destructive">Disconnect Account</button>
       </div>
     </div>
 
-    <button type="button" id="btnLogin" class="btn btn-primary">Log In to Recurse</button>
+    <!-- Not connected -->
+    <div id="viewDisconnected" class="app" hidden>
+      <section class="glass hero">
+        <svg class="hero-icon" aria-hidden="true"><use href="#recurse-logo"/></svg>
+        <span class="status-pill idle"><span class="dot"></span>Not connected</span>
+        <h1 class="hero-title">Connect to Recurse</h1>
+        <p class="hero-body">
+          Sign in on the Recurse site and your accepted LeetCode submissions will count toward your streak automatically.
+        </p>
+        <button type="button" id="btnLogin" class="btn btn-primary">Sign In to Recurse</button>
+      </section>
 
-    <div class="manual-section">
-      <div class="manual-toggle" id="manualToggle">
-        <span>Connect manually with User ID</span>
-        <span id="manualChevron">▾</span>
-      </div>
-      <div class="manual-content" id="manualContent">
-        <input type="text" id="manualTokenInput" placeholder="Paste your User ID / Sync Token" />
-        <button type="button" id="btnManualConnect" class="btn btn-secondary">Connect Account</button>
-      </div>
+      <section class="glass disclosure">
+        <div class="row interactive" id="manualToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="manualContent">
+          <span class="row-icon gray">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+          </span>
+          <span class="row-label">Connect with Account ID</span>
+          <svg class="chevron" id="manualChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </div>
+        <div class="manual-content" id="manualContent">
+          <p class="manual-help">Find your Account ID under Extension in the Recurse dashboard.</p>
+          <input type="text" id="manualTokenInput" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" spellcheck="false" autocomplete="off" aria-label="Account ID" />
+          <button type="button" id="btnManualConnect" class="btn btn-glass">Connect Account</button>
+        </div>
+      </section>
     </div>
-  </div>
 
-  <div id="statusAlert" class="status-alert"></div>
+    <footer class="footer">
+      <button type="button" id="btnCheckUpdate" class="text-btn" title="Compare with the latest version published on Recurse">
+        Check for Updates
+      </button>
+      <button type="button" id="btnReload" class="text-btn" title="Reload the extension from its folder to apply updated files">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+        Reload
+      </button>
+    </footer>
+  </main>
 
-  <div class="footer">
-    <button type="button" id="btnCheckUpdate" class="footer-btn" title="Compare with the latest version published on Recurse">
-      Check for updates
-    </button>
-    <button type="button" id="btnReload" class="footer-btn" title="Reload the extension from its folder to apply updated files">
-      &#x21bb; Reload extension
-    </button>
-  </div>
+  <div id="statusAlert" class="status-alert" role="alert"></div>
 
   <script src="popup.js"></script>
 </body>

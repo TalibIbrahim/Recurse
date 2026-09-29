@@ -35,19 +35,32 @@ document.addEventListener('DOMContentLoaded', () => {
       ? chrome.storage.local
       : null;
 
+  let alertTimer = null;
   function showAlert(message, isSuccess = true) {
     statusAlert.textContent = message;
     statusAlert.className = isSuccess ? 'status-alert success' : 'status-alert error';
     statusAlert.style.display = 'flex';
 
-    setTimeout(() => {
+    clearTimeout(alertTimer);
+    alertTimer = setTimeout(() => {
       statusAlert.style.display = 'none';
     }, 4000);
   }
 
+  const avatarInitials = document.getElementById('avatarInitials');
+  const statToday = document.getElementById('statToday');
+  const statPending = document.getElementById('statPending');
+  const statLastSync = document.getElementById('statLastSync');
+
+  function initialsFor(name) {
+    const parts = String(name).trim().split(/s+/).filter(Boolean);
+    const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] || 'R').slice(0, 2);
+    return letters.toUpperCase();
+  }
+
   function renderConnectedState(userData) {
-    viewConnected.style.display = 'block';
-    viewDisconnected.style.display = 'none';
+    viewConnected.hidden = false;
+    viewDisconnected.hidden = true;
 
     const name = userData.recurse_full_name || userData.recurse_username || 'Account User';
     const handle = userData.recurse_username ? `@${userData.recurse_username}` : '';
@@ -56,11 +69,60 @@ document.addEventListener('DOMContentLoaded', () => {
     connectedName.textContent = name;
     connectedHandle.textContent = handle;
     connectedUserId.textContent = userId;
+    avatarInitials.textContent = initialsFor(name);
+    renderStats();
   }
 
   function renderDisconnectedState() {
-    viewConnected.style.display = 'none';
-    viewDisconnected.style.display = 'block';
+    viewConnected.hidden = true;
+    viewDisconnected.hidden = false;
+  }
+
+  // Same day format content.js uses when recording logged_solves.
+  function localDayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function formatAgo(iso) {
+    const ms = Date.now() - new Date(iso).getTime();
+    if (!iso || Number.isNaN(ms)) return '—';
+    const mins = Math.floor(ms / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
+
+  function renderStats() {
+    if (!storage) return;
+    storage.get(['logged_solves', 'pending_solves', 'recurse_last_sync'], (data) => {
+      const today = localDayKey();
+      const logged = data.logged_solves && typeof data.logged_solves === 'object' ? data.logged_solves : {};
+      const pending = Array.isArray(data.pending_solves)
+        ? data.pending_solves.filter((p) => p && p.synced !== true)
+        : [];
+      statToday.textContent = String(Object.values(logged).filter((d) => d === today).length);
+      statPending.textContent = String(pending.length);
+      statLastSync.textContent = formatAgo(data.recurse_last_sync);
+    });
+  }
+
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((_changes, area) => {
+      if (area === 'local' && !viewConnected.hidden) renderStats();
+    });
+  }
+
+  // Make role="button" rows keyboard-operable.
+  function activateOnKey(el, handler) {
+    el?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handler();
+      }
+    });
   }
 
   // Load existing session from storage
@@ -90,22 +152,25 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Copy User ID on token row click
-  tokenRow?.addEventListener('click', async () => {
+  async function copyAccountId() {
     const text = connectedUserId.textContent;
     if (text && text !== '...') {
       try {
         await navigator.clipboard.writeText(text);
-        copyHint.textContent = 'Copied!';
-        copyHint.style.color = '#10B981';
+        copyHint.textContent = 'Copied';
+        copyHint.classList.add('copied');
         setTimeout(() => {
           copyHint.textContent = 'Copy';
-          copyHint.style.color = '#38BDF8';
+          copyHint.classList.remove('copied');
         }, 2000);
       } catch {
-        // Fallback
+        showAlert('Could not copy to clipboard.', false);
       }
     }
-  });
+  }
+
+  tokenRow?.addEventListener('click', copyAccountId);
+  activateOnKey(tokenRow, copyAccountId);
 
   // Action: Open Dashboard
   btnDashboard?.addEventListener('click', () => {
@@ -155,10 +220,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Toggle manual connection section
-  manualToggle?.addEventListener('click', () => {
+  function toggleManual() {
     const isOpen = manualContent.classList.toggle('open');
-    manualChevron.textContent = isOpen ? '▴' : '▾';
-  });
+    manualChevron.classList.toggle('open', isOpen);
+    manualToggle.setAttribute('aria-expanded', String(isOpen));
+    if (isOpen) manualTokenInput.focus();
+  }
+
+  manualToggle?.addEventListener('click', toggleManual);
+  activateOnKey(manualToggle, toggleManual);
 
   // Manual Connection handler
   btnManualConnect?.addEventListener('click', async () => {
@@ -287,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       if (manual) {
         btnCheckUpdate.disabled = false;
-        btnCheckUpdate.textContent = 'Check for updates';
+        btnCheckUpdate.textContent = 'Check for Updates';
       }
     }
   }
